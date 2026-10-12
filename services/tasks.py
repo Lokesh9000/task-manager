@@ -4,6 +4,7 @@ from utils.errors import NotFoundError, ValidationError
 MIN_PRIORITY = 1
 MAX_PRIORITY = 5
 DEFAULT_PRIORITY = 3
+_PRIORITY_FILTER_VALUES = {str(p): p for p in range(MIN_PRIORITY, MAX_PRIORITY + 1)}
 
 TASKS: dict[int, dict] = {
     1: {"id": 1, "title": "Buy groceries",  "done": False, "user_id": 1, "priority": 3},
@@ -113,3 +114,42 @@ def update_task_priority(task_id: int, updates: object) -> dict:
         raise ValidationError("priority", "is required")
     task["priority"] = _validate_priority(updates["priority"])
     return task
+
+def parse_priority_filter(values: list[str]) -> int | None:
+    """Parse the raw priority filter values from a task listing request.
+
+    Args:
+        values: Every raw string supplied for the priority filter. An empty
+            list means no filter was requested.
+
+    Returns:
+        The requested priority, or None if no filter was requested.
+
+    Raises:
+        ValidationError: If more than one value is supplied, or the value is
+            not exactly one of the strings "1" to "5". Empty strings, padded
+            values, signs, leading zeros, and decimals are rejected.
+    """
+    if not values:
+        return None
+    if len(values) != 1 or values[0] not in _PRIORITY_FILTER_VALUES:
+        raise ValidationError("priority", "must be an integer from 1 to 5")
+    return _PRIORITY_FILTER_VALUES[values[0]]
+
+def list_tasks(priority: int | None = None) -> list[dict]:
+    """Retrieve all tasks, optionally filtered by priority.
+
+    Args:
+        priority: If given, only tasks with this priority are returned.
+            Defaults to None, which returns every task.
+
+    Returns:
+        A new list of task records. The list is empty if no task matches.
+
+    Raises:
+        ValidationError: If priority is given and is not an integer from 1 to 5.
+    """
+    if priority is None:
+        return list(TASKS.values())
+    priority = _validate_priority(priority)
+    return [task for task in TASKS.values() if task["priority"] == priority]

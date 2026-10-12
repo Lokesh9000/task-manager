@@ -7,6 +7,7 @@ COMP 4600/5300 PA 5, Task 1: Plan Mode sessions for the task-manager repository.
 | 1 | Add task priority defaults, validation, and service-layer tests. | Yes | Required `test_seed_tasks_have_default_priority` and all new priority tests to use `restore_tasks`, ensuring shared-state isolation. | Yes |
 | 2 | Expose task priority through POST endpoint and add API tests. | No | No amendment; approved the original plan without changes. | Yes |
 | 3 | Implement PATCH task priority updates with validation and tests. | Yes | Added API-level JSON null request test to cover previously untested 422 behavior. | Yes |
+| 4 | Add GET task listing with optional validated priority filtering. | No | No amendment; approved the original plan without changes. | Yes |
 
 ## Session 1 evidence
 
@@ -166,3 +167,54 @@ None of these changes the behaviour described in the approved plan.
 No genuine implementation divergence occurred. `update_task_priority` and the PATCH route match
 the code in the amended plan, and all nine planned test functions are present with the planned
 parameters (19 service-level and 17 API-level cases).
+
+## Session 4 evidence
+
+### Plan artifact
+
+- Approved plan: `plans/session4-approved-plan.md` (8,834 bytes)
+  - SHA-256: `ad694a04473f0a43e0ac831f8196291a9e0b622e3bc3a6dd546c64577d70d5b3`
+  - Provenance: byte-for-byte copy of the plan file
+    `C:\Users\Lokes\.claude\plans\pasted-content-id-3ee2-comp-4600-5300-melodic-meerkat.md`
+    (`cmp` reports no difference; both files have the same size and hash)
+- Transcript:
+  `C:\Users\Lokes\.claude\projects\C--Users-Lokes-Downloads-task-manager-task-manager\278ce802-0d9c-4d2e-9ead-db1274f5844c.jsonl`
+  (plan-file write at line 50, tool call `toolu_01GYoKtFKtjcAKpL9ycb2mD3`)
+- The plan was approved as first presented, so there is no separate amended plan. The plan file
+  was written once and not edited afterwards.
+- The hash is of the file with LF line endings, as written.
+
+### Finding during planning
+
+- The session prompt referred to an existing `list_tasks` service and `GET /api/tasks` route.
+  Neither existed at commit `d4b4f0c`: `services/tasks.py` had no `list_tasks`, and
+  `routes/api.py` registered `/tasks` for `POST` only, so `GET /api/tasks` returned 405.
+- The approved plan therefore created both the service function and the GET route, and read
+  "preserve existing behavior" as "the unfiltered call returns every task".
+
+### Files modified
+
+- `services/tasks.py`
+- `routes/api.py`
+- `tests/test_tasks.py`
+
+### Verification
+
+- `.venv/Scripts/python -m pytest -q`: 127 passed (67 existing tests plus 60 new cases).
+- `.venv/Scripts/python -m ruff check .`: 5 findings, the same 5 that existed before the session
+  (same rules, files and line numbers as recorded before editing); no new findings.
+- `git diff --check`: no output.
+- `git status --short`: only the three files above were modified by the implementation.
+- `GET /api/tasks` returns 200 with every task as a bare JSON array.
+- `GET /api/tasks?priority=n` returns only tasks with that priority, for seeded tasks and for
+  tasks created or updated through the API; a valid priority with no match returns 200 and `[]`.
+- Invalid filters (empty, out of range, `3.0`, `true`, whitespace-padded, signed, leading zero,
+  repeated parameter) return 422 through the existing `ValidationError`, and `TASKS` is
+  unchanged, compared against a deep copy.
+
+### Divergence from the approved plan
+
+No genuine implementation divergence occurred. `parse_priority_filter`, `list_tasks`,
+`_PRIORITY_FILTER_VALUES` and the GET route match the code in the approved plan, and all 14
+planned test functions are present with the planned parameters (38 service-level and 22
+API-level cases).

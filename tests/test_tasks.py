@@ -1,7 +1,7 @@
 import copy
 import pytest
 from app import app
-from services.tasks import TASKS, create_task, process_order, get_task, get_tasks_for_user, update_task_priority
+from services.tasks import TASKS, create_task, process_order, get_task, get_tasks_for_user, update_task_priority, list_tasks, parse_priority_filter
 from utils.errors import NotFoundError, ValidationError
 
 @pytest.fixture
@@ -181,4 +181,113 @@ def test_api_update_task_not_found(restore_tasks, client):
     response = client.patch("/api/tasks/999", json={"priority": 2})
     assert response.status_code == 404
     assert response.get_json() == {"error": "Task not found"}
+    assert TASKS == tasks_before
+
+def test_list_tasks_unfiltered(restore_tasks):
+    result = list_tasks()
+    assert result == list(TASKS.values())
+    assert list_tasks(None) == list(TASKS.values())
+    assert [task["id"] for task in result] == [1, 2, 3]
+
+def test_list_tasks_matching_seeded(restore_tasks):
+    result = list_tasks(3)
+    assert [task["id"] for task in result] == [1, 2, 3]
+
+@pytest.mark.parametrize("priority", [1, 2, 4, 5])
+def test_list_tasks_no_match(restore_tasks, priority):
+    assert list_tasks(priority) == []
+
+def test_list_tasks_created_and_updated(restore_tasks):
+    created = create_task("Water plants", 2, 1)
+    update_task_priority(2, {"priority": 5})
+    assert list_tasks(1) == [created]
+    assert [task["id"] for task in list_tasks(5)] == [2]
+    assert [task["id"] for task in list_tasks(3)] == [1, 3]
+
+@pytest.mark.parametrize("priority", [True, False, "3", 3.0, 2.5, 0, 6, -1])
+def test_list_tasks_invalid_priority(restore_tasks, priority):
+    tasks_before = copy.deepcopy(TASKS)
+    with pytest.raises(ValidationError) as exc_info:
+        list_tasks(priority)
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.message == "Invalid priority: must be an integer from 1 to 5"
+    assert TASKS == tasks_before
+
+def test_list_tasks_does_not_mutate(restore_tasks):
+    tasks_before = copy.deepcopy(TASKS)
+    unfiltered = list_tasks()
+    matching = list_tasks(3)
+    assert list_tasks(1) == []
+    assert TASKS == tasks_before
+    unfiltered.clear()
+    matching.clear()
+    assert TASKS == tasks_before
+
+@pytest.mark.parametrize("values, expected", [
+    ([], None),
+    (["1"], 1),
+    (["2"], 2),
+    (["3"], 3),
+    (["4"], 4),
+    (["5"], 5),
+])
+def test_parse_priority_filter_valid(restore_tasks, values, expected):
+    assert parse_priority_filter(values) == expected
+
+@pytest.mark.parametrize("values", [
+    [""], ["0"], ["6"], ["-1"], ["3.0"], ["2.5"], ["true"], ["abc"],
+    [" 3"], ["3 "], ["03"], ["+3"], ["٣"], ["9" * 5000],
+    ["1", "2"], ["3", "3"],
+])
+def test_parse_priority_filter_invalid(restore_tasks, values):
+    with pytest.raises(ValidationError) as exc_info:
+        parse_priority_filter(values)
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.message == "Invalid priority: must be an integer from 1 to 5"
+
+def test_api_list_tasks_unfiltered(restore_tasks, client):
+    response = client.get("/api/tasks")
+    assert response.status_code == 200
+    assert response.get_json() == list(TASKS.values())
+    assert all(set(task) == {"id", "title", "done", "user_id", "priority"}
+               for task in response.get_json())
+
+def test_api_list_tasks_matching_seeded(restore_tasks, client):
+    response = client.get("/api/tasks?priority=3")
+    assert response.status_code == 200
+    assert [task["id"] for task in response.get_json()] == [1, 2, 3]
+
+@pytest.mark.parametrize("priority", [1, 2, 4, 5])
+def test_api_list_tasks_no_match(restore_tasks, client, priority):
+    response = client.get(f"/api/tasks?priority={priority}")
+    assert response.status_code == 200
+    assert response.get_json() == []
+
+def test_api_list_tasks_created_and_updated(restore_tasks, client):
+    created = client.post("/api/tasks", json={"title": "Water plants", "user_id": 2,
+                                              "priority": 1}).get_json()
+    client.patch("/api/tasks/2", json={"priority": 5})
+    assert client.get("/api/tasks?priority=1").get_json() == [created]
+    assert [task["id"] for task in client.get("/api/tasks?priority=5").get_json()] == [2]
+    assert [task["id"] for task in client.get("/api/tasks?priority=3").get_json()] == [1, 3]
+
+@pytest.mark.parametrize("query", [
+    "priority=", "priority", "priority=0", "priority=6", "priority=-1",
+    "priority=3.0", "priority=2.5", "priority=true", "priority=abc",
+    "priority=%203", "priority=3%20", "priority=+3", "priority=03",
+    "priority=1&priority=2",
+])
+def test_api_list_tasks_invalid_priority(restore_tasks, client, query):
+    tasks_before = copy.deepcopy(TASKS)
+    response = client.get(f"/api/tasks?{query}")
+    assert response.status_code == 422
+    assert response.get_json() == {
+        "error": "Invalid priority: must be an integer from 1 to 5"}
+    assert TASKS == tasks_before
+
+def test_api_list_tasks_does_not_mutate(restore_tasks, client):
+    tasks_before = copy.deepcopy(TASKS)
+    assert client.get("/api/tasks").status_code == 200
+    assert client.get("/api/tasks?priority=3").status_code == 200
+    assert client.get("/api/tasks?priority=1").get_json() == []
     assert TASKS == tasks_before
