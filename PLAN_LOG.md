@@ -216,3 +216,87 @@ Minor coverage gap: an unknown task ID with an empty JSON object (`{}`) is not d
 ### Outcome
 
 The approved amended plan was implemented successfully. Session 4 has not been started.
+
+## PA 5, Task 1 — Session 4: Optional `?priority=` filter on `GET /api/tasks`
+
+- **Date:** 2026-10-11 (audited and committed 2026-10-12)
+- **Scope:** `services/tasks.py`, `routes/api.py`, `tests/test_tasks.py` and `tests/test_api.py`.
+- **Base commit:** `1420231` (PA5 Task 1 Session 3: add PATCH priority updates)
+- **Saved plan:** `plans/session4-original-plan.md`
+
+### Planning discovery and decisions
+
+Inspection during planning found that `GET /api/tasks` did not exist: `/api/tasks` accepted only POST, so GET returned 405, and there was no list-all service function. Two decisions were made by the reviewer before the plan was written:
+
+- Add an unfiltered listing endpoint: `GET /api/tasks` without `priority` returns all tasks.
+- Reject a repeated `priority` query parameter with HTTP 422, even when the values are identical.
+
+### Original plan
+
+Saved as `plans/session4-original-plan.md`, a byte-for-byte copy of the Plan Mode plan file, before implementation. It proposed:
+
+- A service-layer `list_tasks(priority=None)` in `services/tasks.py` that returns a new list of all tasks, or validates the priority with the existing `_validate_priority()` and returns the matching tasks. It never assigns into `TASKS`.
+- A shared `PRIORITY_REASON` constant holding the existing message text, used by `_validate_priority()` and by the route, so the string is not copied.
+- A `GET /tasks` route in `routes/api.py` that checks for a repeated parameter, parses the value as a plain ASCII decimal integer, then calls the service. Errors are raised as the existing `ValidationError` and converted by the existing `@api.errorhandler(AppError)`.
+- Isolated service tests in `tests/test_tasks.py` using the existing `restore_tasks` fixture, and API tests in `tests/test_api.py` under its autouse `restore_tasks` fixture.
+
+### Plan review
+
+Approved without amendment. No amended plan was produced.
+
+### Approved behavior
+
+| Request | Response |
+|---|---|
+| `GET /api/tasks` | 200, every task in `TASKS` order |
+| `?priority=N` for N from 1 to 5 | 200, the tasks with that priority |
+| Valid priority, no matches | 200, `[]` |
+| Value that is not a plain decimal integer (including empty), or out of range | 422 `Invalid priority: must be an integer from 1 to 5` |
+| `priority` given more than once | 422 `Invalid priority: must be provided at most once` |
+| Leading zeros (`?priority=03`) | Accepted as 3 |
+| Other query parameters | Ignored |
+
+### Implementation
+
+Four implementation files were changed:
+
+| File | Change |
+|---|---|
+| `services/tasks.py` | Added `PRIORITY_REASON`; `_validate_priority()` uses it in place of the literal, with the same text; added `list_tasks()` after `get_tasks_for_user`. 21 insertions, 1 deletion. |
+| `routes/api.py` | Imported `list_tasks` and `PRIORITY_REASON`; added `list_tasks_route` for `GET /tasks`. 17 insertions, 1 deletion. |
+| `tests/test_tasks.py` | Extended the import; added 4 test functions (15 collected cases). Existing tests are unchanged. |
+| `tests/test_api.py` | Added 7 test functions (31 collected cases). Existing tests are unchanged. |
+
+`git diff --stat`: 4 files changed, 138 insertions, 3 deletions.
+
+No other implementation file was changed, including `utils/errors.py`, the `AppError` handler, `app.py`, `services/users.py`, `requirements.txt` and `CLAUDE.md`. The POST, PATCH and GET-by-ID routes are not in the diff.
+
+### Verification
+
+| Check | Command | Result |
+|---|---|---|
+| Baseline before implementation | recorded in the plan | 73 passed; 5 Ruff findings |
+| Full suite | `.venv/Scripts/python -m pytest -q` | 119 passed: 73 existing + 46 new |
+| Lint | `.venv/Scripts/python -m ruff check .` | 5 findings, none new |
+
+The 46 new cases are 15 service cases and 31 API cases. The 5 Ruff findings are the same pre-existing ones listed under Session 1, at the same locations, and were left in place, as `CLAUDE.md` requires.
+
+### Plan divergence
+
+The production code in `services/tasks.py` and `routes/api.py` matches `plans/session4-original-plan.md`. The differences are confined to the tests, and all are additions; no planned test or case is missing or renamed:
+
+1. `test_list_tasks_ignores_other_params` in `tests/test_api.py` adds a third query, `user_id=1`, to the two planned ones, and its setup first sets task 1 to priority 1.
+2. Both `test_list_tasks_without_priority` tests also assert that the task ids are `[1, 2, 3]`, pinning the order.
+3. The API `test_list_tasks_with_priority` and `test_list_tasks_no_matches` also assert `TASKS == snapshot`, and the former compares full response bodies where the plan said expected ids.
+4. The service `test_list_tasks_with_priority` also asserts that every returned task has the requested priority.
+5. `test_list_tasks_does_not_modify_tasks` clears the results of two filtered calls (priorities 3 and 1) rather than one.
+
+Coverage gaps:
+
+- `?priority=03` has no automated test. It was checked manually during the audit with an in-memory request and returned 200 with the priority-3 tasks.
+- A valid `priority` combined with an unrelated parameter (`?priority=003&done=true`) also has no automated test; the same manual check returned 200 with the priority-3 tasks.
+- HEAD/OPTIONS and trailing-slash behavior, listed in the plan's edge cases, were not verified in the audit.
+
+### Outcome
+
+The approved plan was implemented successfully. Task 2 has not been started.

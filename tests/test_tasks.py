@@ -1,6 +1,6 @@
 import copy
 import pytest
-from services.tasks import process_order, get_task, get_tasks_for_user, TASKS, create_task, update_task_priority
+from services.tasks import process_order, get_task, get_tasks_for_user, TASKS, create_task, update_task_priority, list_tasks
 from utils.errors import NotFoundError, ValidationError
 
 @pytest.fixture
@@ -96,4 +96,36 @@ def test_update_task_priority_missing_task(restore_tasks):
     assert exc_info.value.status_code == 404
     assert exc_info.value.message == "Task not found"
     assert 999 not in TASKS
+    assert TASKS == snapshot
+
+def test_list_tasks_without_priority(restore_tasks):
+    assert list_tasks() == list(TASKS.values())
+    assert list_tasks(None) == list(TASKS.values())
+    assert [task["id"] for task in list_tasks()] == [1, 2, 3]
+
+@pytest.mark.parametrize(
+    "priority, expected_ids",
+    [(1, [1]), (2, []), (3, [3]), (4, []), (5, [2])],
+)
+def test_list_tasks_with_priority(restore_tasks, priority, expected_ids):
+    TASKS[1]["priority"] = 1
+    TASKS[2]["priority"] = 5
+    result = list_tasks(priority)
+    assert [task["id"] for task in result] == expected_ids
+    assert all(task["priority"] == priority for task in result)
+
+@pytest.mark.parametrize("priority", [0, 6, -1, "3", 2.5, 3.0, True, False])
+def test_list_tasks_invalid_priority(restore_tasks, priority):
+    snapshot = copy.deepcopy(TASKS)
+    with pytest.raises(ValidationError) as exc_info:
+        list_tasks(priority)
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.message == "Invalid priority: must be an integer from 1 to 5"
+    assert TASKS == snapshot
+
+def test_list_tasks_does_not_modify_tasks(restore_tasks):
+    snapshot = copy.deepcopy(TASKS)
+    list_tasks().clear()
+    list_tasks(3).clear()
+    list_tasks(1).clear()
     assert TASKS == snapshot

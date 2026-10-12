@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from services.tasks import get_task, create_task, process_order, update_task_priority
+from services.tasks import get_task, create_task, process_order, update_task_priority, list_tasks, PRIORITY_REASON
 from services.users import get_user
 from utils.errors import AppError, ValidationError
 
@@ -21,6 +21,22 @@ def update_task_route(task_id):
     if "priority" not in data:
         raise ValidationError("priority", "is required")
     return jsonify(update_task_priority(task_id, data["priority"]))
+
+@api.route("/tasks", methods=["GET"])
+def list_tasks_route():
+    values = request.args.getlist("priority")
+    if not values:
+        return jsonify(list_tasks())
+    if len(values) > 1:
+        raise ValidationError("priority", "must be provided at most once")
+    raw = values[0]
+    if not (raw.isascii() and raw.isdigit()):
+        raise ValidationError("priority", PRIORITY_REASON)
+    try:
+        priority = int(raw)
+    except ValueError:
+        raise ValidationError("priority", PRIORITY_REASON) from None
+    return jsonify(list_tasks(priority))
 
 @api.route("/tasks", methods=["POST"])
 def create_task_route():

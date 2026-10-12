@@ -122,3 +122,70 @@ def test_update_task_not_found_with_invalid_priority(client):
     assert response.status_code == 404
     assert response.get_json() == {"error": "Task not found"}
     assert TASKS == snapshot
+
+def test_list_tasks_without_priority(client):
+    snapshot = copy.deepcopy(TASKS)
+    response = client.get("/api/tasks")
+    assert response.status_code == 200
+    assert response.get_json() == list(TASKS.values())
+    assert [task["id"] for task in response.get_json()] == [1, 2, 3]
+    assert TASKS == snapshot
+
+@pytest.mark.parametrize(
+    "priority, expected_ids",
+    [(1, [1]), (2, []), (3, [3]), (4, []), (5, [2])],
+)
+def test_list_tasks_with_priority(client, priority, expected_ids):
+    TASKS[1]["priority"] = 1
+    TASKS[2]["priority"] = 5
+    snapshot = copy.deepcopy(TASKS)
+    response = client.get(f"/api/tasks?priority={priority}")
+    assert response.status_code == 200
+    assert response.get_json() == [TASKS[task_id] for task_id in expected_ids]
+    assert TASKS == snapshot
+
+def test_list_tasks_no_matches(client):
+    snapshot = copy.deepcopy(TASKS)
+    response = client.get("/api/tasks?priority=1")
+    assert response.status_code == 200
+    assert response.get_json() == []
+    assert TASKS == snapshot
+
+def test_list_tasks_after_patch(client):
+    client.patch("/api/tasks/1", json={"priority": 5})
+    response = client.get("/api/tasks?priority=5")
+    assert response.status_code == 200
+    assert response.get_json() == [TASKS[1]]
+    remaining = client.get("/api/tasks?priority=3").get_json()
+    assert [task["id"] for task in remaining] == [2, 3]
+
+@pytest.mark.parametrize(
+    "value",
+    ["abc", "", "3.0", "2.5", "0", "6", "-1", "+3", " 3", "3 ", "true", "null",
+     "1,2", "٣", "9" * 5000],
+)
+def test_list_tasks_invalid_priority(client, value):
+    snapshot = copy.deepcopy(TASKS)
+    response = client.get("/api/tasks", query_string={"priority": value})
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid priority: must be an integer from 1 to 5"}
+    assert TASKS == snapshot
+
+@pytest.mark.parametrize(
+    "query",
+    ["priority=1&priority=2", "priority=3&priority=3", "priority=3&priority=abc",
+     "priority=abc&priority=3", "priority=&priority=3"],
+)
+def test_list_tasks_repeated_priority(client, query):
+    snapshot = copy.deepcopy(TASKS)
+    response = client.get(f"/api/tasks?{query}")
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid priority: must be provided at most once"}
+    assert TASKS == snapshot
+
+@pytest.mark.parametrize("query", ["done=true", "Priority=3", "user_id=1"])
+def test_list_tasks_ignores_other_params(client, query):
+    TASKS[1]["priority"] = 1
+    response = client.get(f"/api/tasks?{query}")
+    assert response.status_code == 200
+    assert response.get_json() == list(TASKS.values())

@@ -4,6 +4,7 @@ from utils.errors import NotFoundError, ValidationError
 MIN_PRIORITY = 1
 MAX_PRIORITY = 5
 DEFAULT_PRIORITY = 3
+PRIORITY_REASON = "must be an integer from 1 to 5"
 
 TASKS: dict[int, dict] = {
     1: {"id": 1, "title": "Buy groceries",  "done": False, "user_id": 1, "priority": 3},
@@ -22,7 +23,7 @@ def _validate_priority(priority: int) -> None:
     """
     if (isinstance(priority, bool) or not isinstance(priority, int)
             or not MIN_PRIORITY <= priority <= MAX_PRIORITY):
-        raise ValidationError("priority", "must be an integer from 1 to 5")
+        raise ValidationError("priority", PRIORITY_REASON)
 
 def process_order(task_id: int) -> dict:
     task = TASKS[task_id]
@@ -60,6 +61,25 @@ def get_tasks_for_user(user_id: int) -> list[dict]:
     """
     get_user(user_id)
     return [task for task in TASKS.values() if task["user_id"] == user_id]
+
+def list_tasks(priority: int | None = None) -> list[dict]:
+    """Retrieve all tasks, optionally filtered by priority.
+
+    Args:
+        priority: The priority from 1 (urgent) to 5 (low) to filter by. If
+            None, all tasks are returned.
+
+    Returns:
+        A new list of matching task records. The list is empty if no task
+        has the given priority.
+
+    Raises:
+        ValidationError: If priority is given and is not an integer from 1 to 5.
+    """
+    if priority is None:
+        return list(TASKS.values())
+    _validate_priority(priority)
+    return [task for task in TASKS.values() if task["priority"] == priority]
 
 def create_task(title: str, user_id: int, priority: int = DEFAULT_PRIORITY) -> dict:
     """Create a new task.
