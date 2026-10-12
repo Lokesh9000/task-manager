@@ -2,7 +2,7 @@
 
 - **Finalized:** 2026-10-12, before any implementation subagent started. It was drafted with Claude Code in a preparation session that changed no implementation files.
 - **Base commit:** `b089889` (PA5 Task 1 Session 4: add priority filtering)
-- **Status:** No subagent has run yet. Every result below is a placeholder until it is recorded from an actual run.
+- **Status:** All four subagents have run. Their results, the final audit and the Divergence section are recorded from the actual runs.
 
 ## Baseline
 
@@ -79,7 +79,8 @@ Supporting details the prompts depend on, also design decisions:
 | **Input** | `services/users.py` |
 | **Task** | Add the `notification_pref` field, with a default of `None`, to every user record and define the constants for the allowed values and the default. |
 | **Output** | Modifies `services/users.py` only. |
-| **Result (`pytest -q`) and fixes** | _TO BE RECORDED after SA-1 runs: actual `pytest -q` result, Ruff result, files changed, and any fix made._ |
+| **Result (`pytest -q`) and fixes** | **Completed** in `C:\Users\Lokes\Desktop\task-manager-pa5-fresh`. `pytest -q`: 119 passed in 0.36s. Ruff: Found 5 errors, unchanged from the baseline. Files changed: `services/users.py` only; `git diff --stat` shows 14 lines changed, 11 insertions and 3 deletions. Added `NOTIFICATION_PREFS`, `DEFAULT_NOTIFICATION_PREF`, `notification_pref` on both seed users, and the `create_user()` default. No fix was needed: the session's first test run passed and no edit followed it. No commit or push. Execution note: the SA-1 session initially started in `C:\Users\Lokes` and selected the intended repository after checking three copies; all edits were made in the intended repository. |
+| **Hand-off delivered** | `NOTIFICATION_PREFS` and `DEFAULT_NOTIFICATION_PREF` are defined in `services/users.py`, ready for SA-2. |
 | **Constraint** | Must not add any function or change the signature, validation or docstring of `get_user()` or `create_user()`. Must not touch `routes/api.py`, `services/tasks.py`, `utils/errors.py`, `app.py`, `requirements.txt`, `tests/test_tasks.py`, `tests/test_api.py`, `CLAUDE.md`, `PLAN_LOG.md` or `DECOMPOSITION.md`. Must not create any file. |
 | **Hand-off** | In `services/users.py`: the key `notification_pref` on both seed users and on records built by `create_user()`; `NOTIFICATION_PREFS = ("email", "sms", "none")`; `DEFAULT_NOTIFICATION_PREF = None`. |
 
@@ -130,7 +131,8 @@ Report: the final constants and USERS definition, the exact pytest and Ruff resu
 | **Input** | `services/users.py`, `utils/errors.py` |
 | **Task** | Add the service functions that list users and that get and set a user's notification preference, with validation. |
 | **Output** | Modifies `services/users.py` only. |
-| **Result (`pytest -q`) and fixes** | _TO BE RECORDED after SA-2 runs: actual `pytest -q` result, Ruff result, the before-edit and after-edit `git diff -- services/users.py`, the functions or lines SA-2 added or modified, whether SA-1's field, defaults and constants were preserved, and any fix made._ |
+| **Result (`pytest -q`) and fixes** | **Completed.** `pytest -q`: 119 passed in 0.28s; this figure is from a verification-only rerun in the same session, and the session's first run, straight after the edit, was 119 passed in 0.35s. Ruff: Found 5 errors, 4 fixable, unchanged from the baseline. Files changed: `services/users.py` only. SA-2 added `list_users()`, `get_notification_pref()` and `set_notification_pref()`; the three functions were appended without modifying existing code or adding imports. The before-and-after comparison of `git diff -- services/users.py` confirmed that all SA-1 changes were preserved. The cumulative uncommitted diff of `services/users.py` went from 11 insertions and 3 deletions after SA-1 to 57 insertions and 3 deletions after SA-2, so SA-2's share is 46 inserted lines and no deletions. Inline checks passed for valid values, the `null` reset, invalid values, unchanged state after a rejection, and `NotFoundError` precedence over `ValidationError`. `DECOMPOSITION.md` was already modified before this verification, from recording the SA-1 result, and is not an SA-2 change. No other implementation file changed. No fix was needed: the session's first test run passed and no edit followed it. No commit or push. |
+| **Hand-off delivered** | `list_users()`, `get_notification_pref(user_id)` and `set_notification_pref(user_id, notification_pref)` are defined in `services/users.py`, ready for SA-3. |
 | **Constraint** | Must preserve SA-1's data changes in `services/users.py`: the `USERS` seed records, `NOTIFICATION_PREFS`, `DEFAULT_NOTIFICATION_PREF`, and the existing `get_user()` and `create_user()`. Must not touch `routes/api.py`, `services/tasks.py`, `utils/errors.py`, `app.py`, `requirements.txt`, `tests/test_tasks.py`, `tests/test_api.py`, `CLAUDE.md`, `PLAN_LOG.md` or `DECOMPOSITION.md`. Must not create any file. |
 | **Hand-off** | In `services/users.py`: `list_users() -> list[dict]`; `get_notification_pref(user_id: int) -> str \| None`; `set_notification_pref(user_id: int, notification_pref: str \| None) -> dict`, which returns the updated user record. Errors: `NotFoundError("User")` and `ValidationError("notification_pref", "must be one of email, sms, none, or null")`. |
 
@@ -208,7 +210,8 @@ Report:
 | **Input** | `routes/api.py`, `services/users.py`, `utils/errors.py` |
 | **Task** | Add the user list route and the GET and PATCH notification routes, each calling the service functions from SA-2. |
 | **Output** | Modifies `routes/api.py` only. |
-| **Result (`pytest -q`) and fixes** | _TO BE RECORDED after SA-3 runs: actual `pytest -q` result, Ruff result, files changed, and any fix made._ |
+| **Result (`pytest -q`) and fixes** | **Completed.** `pytest -q`: 119 passed in 0.26s. Ruff: Found 5 errors, all pre-existing. Files changed during SA-3: `routes/api.py` only, with 18 insertions and 1 deletion (the `services.users` import line was extended, and `list_users_route`, `get_notification_pref_route` and `update_notification_pref_route` were added after `get_user_route`). `services/users.py` and `DECOMPOSITION.md` were already modified before SA-3 and are not SA-3 changes. No file was created. No fix was needed: the session's first test run passed and no edit followed it. No commit or push. Differences between the SA-3 prompt and the implementation: none found. A post-run review outside the SA-3 session read the `routes/api.py` diff and exercised the routes in memory: all three endpoints respond; PATCH returns 422 `Invalid request body: must be a JSON object` for `[]`, a JSON string, a JSON number and `null` (also for unknown user 999, before the lookup), 422 `Invalid notification_pref: is required` for `{}`, 404 `User not found` for user 999 with a valid or an invalid value, 422 for the invalid value `"Email"`, and 200 with the updated user for `"email"`, `"sms"`, `"none"` and `null`; rejected requests left `USERS` unchanged; `GET /api/users/1` includes `notification_pref`. |
+| **Hand-off delivered** | `GET /api/users`, `GET /api/users/<id>/notifications` and `PATCH /api/users/<id>/notifications` are defined in `routes/api.py` with the request and response shapes in the feature contract, ready for SA-4. |
 | **Constraint** | Must not touch `services/users.py`, `services/tasks.py` or `utils/errors.py`. Must not change `handle_app_error` or any existing route in `routes/api.py`. Must not read or write `USERS` directly from `routes/api.py`. Must not touch `app.py`, `requirements.txt`, `tests/test_tasks.py`, `tests/test_api.py`, `CLAUDE.md`, `PLAN_LOG.md` or `DECOMPOSITION.md`. Must not create any file, including `routes/users.py`. |
 | **Hand-off** | Routes under the `/api` prefix: `GET /api/users` (200, list of user records); `GET /api/users/<id>/notifications` (200, `{"notification_pref": value}`); `PATCH /api/users/<id>/notifications` (200, updated user record). Error bodies are `{"error": message}` with status 422 or 404, as listed in the feature contract. |
 
@@ -270,7 +273,8 @@ Report: the three route functions as written, the exact pytest and Ruff result l
 | **Input** | `services/users.py`, `routes/api.py`, `utils/errors.py`, `tests/test_api.py`, `tests/test_tasks.py` |
 | **Task** | Add isolated service tests and API tests that verify the notification preference feature against the feature contract. |
 | **Output** | Creates `tests/test_users.py`. Modifies `tests/test_api.py` by addition only. |
-| **Result (`pytest -q`) and fixes** | _TO BE RECORDED after SA-4 runs: actual `pytest -q` result, number of new cases, Ruff result, files changed, and any fix made._ |
+| **Result (`pytest -q`) and fixes** | **Completed.** Full suite `pytest -q`: 170 passed in 0.41s, which is the 119 existing tests plus 51 new ones: 27 in `tests/test_users.py` and 24 in `tests/test_api.py`. `tests/test_users.py` alone: 27 passed. API keyword selection (`-k "user or notification"`): 25 passed, 71 deselected; the 25 are the 24 new API tests plus one existing task test whose parameter id contains `user_id`. Ruff: 5 pre-existing errors; both changed test files pass Ruff individually. Files changed during SA-4: `tests/test_users.py` (new) and `tests/test_api.py` only. In `tests/test_api.py` one import line was added in the import section and the autouse `restore_users` fixture and 12 test functions were appended; no existing line was changed or removed. Existing services and routes were unchanged. No fix was needed: the session's first test run passed and no edit followed it. No commit or push. |
+| **Hand-off delivered** | Final count 170 passed with 51 new cases. No contract behavior failed. Untested cases are listed under Final audit. |
 | **Constraint** | Must not touch `services/users.py`, `services/tasks.py`, `routes/api.py`, `utils/errors.py`, `app.py` or `requirements.txt`. In `tests/test_api.py` it may only extend the import section and append the new fixture and tests; every existing fixture and test must keep its behavior. Must not touch `tests/test_tasks.py`. Must not touch `CLAUDE.md`, `PLAN_LOG.md` or `DECOMPOSITION.md`. If a new test exposes a defect in `services/users.py` or `routes/api.py`, it must stop and report, not edit those files. |
 | **Hand-off** | The final `pytest -q` pass count, the number of new test cases, and a list of any contract behavior that failed or was left untested. This feeds the Divergence section. |
 
@@ -349,22 +353,97 @@ If a new test fails because the test itself is wrong, fix the test in this sessi
 Report: the exact pytest result line, the number of new test cases per file, the exact Ruff result line, the before and after git status --short output, the files that changed during this session, and any behavior above that failed or that you could not test.
 ```
 
+## Final audit
+
+A read-only audit was run on 2026-10-12 after SA-4, outside the four subagent sessions, with all pipeline changes still uncommitted on top of `fdf93c5`.
+
+| Check | Result |
+|---|---|
+| `.venv/Scripts/python -m pytest -q` | 170 passed in 0.31s |
+| `.venv/Scripts/python -m pytest -q tests/test_users.py` | 27 passed |
+| `.venv/Scripts/python -m pytest -q tests/test_api.py -k "user or notification"` | 25 passed, 71 deselected |
+| `.venv/Scripts/python -m ruff check .` | Found 5 errors, the same five as the baseline |
+| Ruff on `tests/test_users.py` and `tests/test_api.py` | All checks passed |
+| `git diff --check` | No output |
+| The four prompts compared with `fdf93c5` | Identical |
+| Files changed against `fdf93c5` | `services/users.py`, `routes/api.py`, `tests/test_api.py`, `tests/test_users.py` (new) and this file |
+| Files not changed | `services/tasks.py`, `utils/errors.py`, `app.py`, `requirements.txt`, `tests/test_tasks.py`, `CLAUDE.md`, `PLAN_LOG.md`; no `routes/users.py` was created |
+
+The implementation matches the feature contract: the allowed values and `None` default, lookup before validation in `set_notification_pref()`, assignment only after both checks, the three routes with the body checks ahead of the service call, and `notification_pref` in the user list and detail responses. Every test in `tests/test_users.py` uses `restore_users`, and `tests/test_api.py` has autouse `restore_tasks` and `restore_users` fixtures side by side.
+
+Session evidence, read from the four Claude Code session transcripts:
+
+| Subagent | Session ID | Started in | Prompt body issued verbatim | User messages | Test runs in session |
+|---|---|---|---|---|---|
+| SA-1 | `8d9b6db8` | `C:\Users\Lokes` | Yes | 1 | 119 passed in 0.36s |
+| SA-2 | `15026797` | `C:\Users\Lokes\Desktop\task-manager-pa5-fresh` | Yes | 2 | 119 passed in 0.35s, then 119 passed in 0.28s |
+| SA-3 | `7f89a0ae` | `C:\Users\Lokes\Desktop\task-manager-pa5-fresh` | Yes | 1 | 119 passed in 0.26s |
+| SA-4 | `5b5b0876` | `C:\Users\Lokes\Desktop\task-manager-pa5-fresh` | Yes | 1 | 170 passed in 0.41s; 27 passed; 25 passed, 71 deselected |
+
+Each subagent ran in its own session, and the sessions ran one after another. No test run failed in any of them, and no session edited a file after its first test run, so no fix was needed anywhere in the pipeline. Each pasted prompt matched its prompt block in this file; some pastes also carried the surrounding label or code-fence markers.
+
+Not covered by an automated test:
+
+- An unknown user with a JSON object that has no `notification_pref` key. It was checked by hand after SA-3 and returned 422 `Invalid notification_pref: is required`.
+- Malformed JSON and a missing JSON content type on the PATCH route. These were out of scope and were not checked.
+
 ## Divergence
 
-Nothing below is filled in yet. Each answer is recorded from what actually happened, after all four subagents have run.
+Recorded on 2026-10-12 after all four subagents ran, from the four session reports, the four session transcripts and repository checks made between the runs.
 
 ### Did Claude follow the Constraint field for every subagent?
 
-_TO BE RECORDED. For each of SA-1 to SA-4: constraint followed or not. For any violation or near-violation: the file path, which constraint, and what Claude did instead._
+Yes. No file-boundary violation was found for any subagent.
+
+| Subagent | Constraint followed | Files changed in its session |
+|---|---|---|
+| SA-1 | Yes | `services/users.py` only: the two constants, `notification_pref` on both seed users, and the `create_user()` default. No function was added and no signature changed. |
+| SA-2 | Yes | `services/users.py` only: three functions appended, with no change to existing code and no new import. SA-1's field, defaults and constants were preserved. |
+| SA-3 | Yes | `routes/api.py` only: one import line extended and three routes added. `handle_app_error` and the existing routes were not changed, and the routes do not read `USERS`. |
+| SA-4 | Yes | `tests/test_users.py` (new) and `tests/test_api.py` only. No existing test or fixture was changed, and no production file was touched. |
+
+Two things came close to a boundary without crossing it:
+
+- **SA-1 working directory.** The SA-1 session initially started in `C:\Users\Lokes`, not in the repository. Two file searches from that directory timed out. It then found three copies of the project (`Desktop\task-manager-OLD-PA5-BACKUP\repo`, `Desktop\task-manager-pa5-fresh` and `Downloads\task-manager\task-manager`), inspected each read-only, and selected the intended repository, `C:\Users\Lokes\Desktop\task-manager-pa5-fresh`, before editing. The transcript shows edits to that repository's `services/users.py` only; the other two copies were not edited. This is not a file-boundary violation, but the prompt named files only by relative path, so it did not rule out editing a different copy.
+- **SA-2 shared file.** SA-1 and SA-2 both had `services/users.py` as their Output, so `git status` could not show whether SA-2 had altered SA-1's work. SA-2 recorded `git diff -- services/users.py` before and after its edits and compared the two. The comparison showed only the three appended functions as new, and every SA-1 line still present. The uncommitted diff of that file went from 11 insertions and 3 deletions after SA-1 to 57 insertions and 3 deletions after SA-2.
+
+`DECOMPOSITION.md` was modified between subagent runs to record results. Those edits were made in a separate documentation session, not by a subagent, so each later subagent correctly reported the file as already modified before it started.
+
+Differences between the prewritten prompts and the implementations:
+
+- SA-1, SA-2 and SA-3: none found.
+- SA-4: nothing in the prompt's coverage list is missing. Two small additions go beyond it: the service-level reset test is parametrized over all three values where the prompt asked for one reset after a set, and the seed-user test also asserts that the user ids are 1 and 2.
+- SA-4's keyword selection in verification step 2, `-k "user or notification"`, also selected one existing task test whose parameter id contains `user_id`, so it reported 25 passed, not the 24 new API tests. This is an imprecision in the prompt, not in the implementation.
+
+One difference between the execution rules and the actual run:
+
+- The SA-2 session received a second message after its prewritten prompt: "Finish SA-2 verification without changing any files", asking it to rerun `pytest -q`, Ruff, `git status --short` and `git diff --stat` and to confirm SA-1's changes were preserved. It was verification only. The session made no edit after that message, and the rerun gave the 119 passed in 0.28s recorded above. The other three sessions received only their prewritten prompt.
 
 ### Did any subagent's output break the next subagent's assumption?
 
-_TO BE RECORDED. Any hand-off value that was missing, renamed or different from this document, and which precondition check caught it._
+No. Every hand-off arrived as this document specified, and no precondition check failed.
+
+- SA-1 to SA-2: `NOTIFICATION_PREFS`, `DEFAULT_NOTIFICATION_PREF` and the `notification_pref` key were present with the specified names and values.
+- SA-2 to SA-3: `list_users()`, `get_notification_pref()` and `set_notification_pref()` were present with the specified signatures, and SA-3 imported them without change.
+- SA-3 to SA-4: the three routes returned the specified shapes, status codes and error messages, so all 51 new tests passed against the production code as written.
+
+The only hand-off issue was outside the code: the SA-1 working-directory ambiguity described above, which was resolved inside the SA-1 session before any edit.
 
 ### How did you recover?
 
-_TO BE RECORDED. The fix, the session it was made in, and the `pytest -q` result afterwards._
+No code recovery was needed. The session transcripts show no failing test run and no fix in any subagent session, `pytest -q` was green after every subagent (119, 119, 119, then 170 passed), and no red state was carried forward.
+
+The two process issues were handled as follows:
+
+- **SA-1 working directory:** handled in the SA-1 session by checking the three copies and selecting the intended repository before editing. The result was then confirmed from the repository itself: `git diff --stat` there showed `services/users.py` with 11 insertions and 3 deletions.
+- **SA-2 shared file:** handled before SA-2 ran, by amending its prompt to require the before-and-after `git diff -- services/users.py` comparison. SA-2 then ran with that prompt unchanged.
 
 ### Would you write the decomposition differently a second time?
 
-_TO BE RECORDED. What would change in the boundaries, prompts or verification steps, and why._
+Yes. The boundaries held, but the run showed five things to change:
+
+1. **Pin the working directory in every prompt.** Each prompt should start by stating the absolute repository path and telling the session to confirm it with `git rev-parse --show-toplevel` and the expected `HEAD` before reading anything. The SA-1 session started in `C:\Users\Lokes` and had to choose between three copies.
+2. **Commit after each subagent.** With one commit per subagent, each boundary would be a commit diff. That would replace the manual before-and-after comparison SA-2 needed for `services/users.py`, and the "already modified" caveats in the SA-3 and SA-4 prompts.
+3. **Verify behavior earlier.** With tests last, `pytest -q` after SA-1, SA-2 and SA-3 only showed that the 119 existing tests still passed; the new behavior had no automated test until SA-4. Having each layer add its own tests, or writing the tests first, would make each `pytest -q` checkpoint prove that subagent's own work.
+4. **Make the verification steps consistent and precise.** SA-1's prompt checks `git status` only afterwards, while the execution rules call for before and after. SA-4's `-k "user or notification"` selector should name the new tests exactly, because it also matched an existing task test.
+5. **Close the known test gap in the SA-4 prompt.** Add the case of an unknown user with a JSON object that has no `notification_pref` key, which is the one contract behavior left without an automated test.

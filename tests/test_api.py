@@ -4,6 +4,7 @@ import pytest
 
 from app import app
 from services.tasks import TASKS
+from services.users import USERS
 
 
 @pytest.fixture
@@ -189,3 +190,118 @@ def test_list_tasks_ignores_other_params(client, query):
     response = client.get(f"/api/tasks?{query}")
     assert response.status_code == 200
     assert response.get_json() == list(TASKS.values())
+
+@pytest.fixture(autouse=True)
+def restore_users():
+    snapshot = copy.deepcopy(USERS)
+    try:
+        yield
+    finally:
+        USERS.clear()
+        USERS.update(snapshot)
+
+def test_list_users(client):
+    snapshot = copy.deepcopy(USERS)
+    response = client.get("/api/users")
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body == list(USERS.values())
+    assert all("notification_pref" in user for user in body)
+    assert USERS == snapshot
+
+def test_get_user_includes_notification_pref(client):
+    response = client.get("/api/users/1")
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body == USERS[1]
+    assert "notification_pref" in body
+    assert body["notification_pref"] is None
+
+def test_get_notification_pref_default(client):
+    response = client.get("/api/users/1/notifications")
+    assert response.status_code == 200
+    assert response.get_json() == {"notification_pref": None}
+
+@pytest.mark.parametrize("value", ["email", "sms", "none"])
+def test_update_notification_pref(client, value):
+    snapshot = copy.deepcopy(USERS)
+    response = client.patch("/api/users/1/notifications", json={"notification_pref": value})
+    assert response.status_code == 200
+    assert response.get_json() == {**snapshot[1], "notification_pref": value}
+    assert USERS[1] == {**snapshot[1], "notification_pref": value}
+    assert USERS[2] == snapshot[2]
+    assert client.get("/api/users/1/notifications").get_json() == {"notification_pref": value}
+    assert client.get("/api/users/1").get_json() == {**snapshot[1], "notification_pref": value}
+    assert client.get("/api/users").get_json() == [
+        {**snapshot[1], "notification_pref": value},
+        snapshot[2],
+    ]
+
+def test_update_notification_pref_null_resets(client):
+    snapshot = copy.deepcopy(USERS)
+    client.patch("/api/users/1/notifications", json={"notification_pref": "email"})
+    assert USERS[1]["notification_pref"] == "email"
+    response = client.patch("/api/users/1/notifications", json={"notification_pref": None})
+    assert response.status_code == 200
+    assert response.get_json() == snapshot[1]
+    assert response.get_json()["notification_pref"] is None
+    assert client.get("/api/users/1/notifications").get_json() == {"notification_pref": None}
+    assert USERS == snapshot
+
+@pytest.mark.parametrize("value", ["Email", "", "push", 1, True, [], {}])
+def test_update_notification_pref_invalid(client, value):
+    snapshot = copy.deepcopy(USERS)
+    response = client.patch("/api/users/1/notifications", json={"notification_pref": value})
+    assert response.status_code == 422
+    assert response.get_json() == {
+        "error": "Invalid notification_pref: must be one of email, sms, none, or null"
+    }
+    assert USERS == snapshot
+
+@pytest.mark.parametrize("body", [{}, {"pref": "email"}])
+def test_update_notification_pref_missing_key(client, body):
+    snapshot = copy.deepcopy(USERS)
+    response = client.patch("/api/users/1/notifications", json=body)
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid notification_pref: is required"}
+    assert USERS == snapshot
+
+@pytest.mark.parametrize("body", ["[]", '"email"', "3", "null"])
+def test_update_notification_pref_non_object_body(client, body):
+    snapshot = copy.deepcopy(USERS)
+    response = client.patch(
+        "/api/users/1/notifications", data=body, content_type="application/json"
+    )
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid request body: must be a JSON object"}
+    assert USERS == snapshot
+
+def test_get_notification_pref_user_not_found(client):
+    snapshot = copy.deepcopy(USERS)
+    response = client.get("/api/users/999/notifications")
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "User not found"}
+    assert USERS == snapshot
+
+def test_update_notification_pref_user_not_found(client):
+    snapshot = copy.deepcopy(USERS)
+    response = client.patch("/api/users/999/notifications", json={"notification_pref": "email"})
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "User not found"}
+    assert USERS == snapshot
+
+def test_update_notification_pref_user_not_found_with_invalid_value(client):
+    snapshot = copy.deepcopy(USERS)
+    response = client.patch("/api/users/999/notifications", json={"notification_pref": "push"})
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "User not found"}
+    assert USERS == snapshot
+
+def test_update_notification_pref_non_object_body_checked_before_user_lookup(client):
+    snapshot = copy.deepcopy(USERS)
+    response = client.patch(
+        "/api/users/999/notifications", data="[]", content_type="application/json"
+    )
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid request body: must be a JSON object"}
+    assert USERS == snapshot
