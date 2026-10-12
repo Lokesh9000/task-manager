@@ -1,7 +1,7 @@
 import copy
 import pytest
 from app import app
-from services.tasks import TASKS, create_task, process_order, get_task, get_tasks_for_user
+from services.tasks import TASKS, create_task, process_order, get_task, get_tasks_for_user, update_task_priority
 from utils.errors import NotFoundError, ValidationError
 
 @pytest.fixture
@@ -92,4 +92,93 @@ def test_api_create_task_invalid_priority(restore_tasks, client, priority):
     assert response.status_code == 422
     assert response.get_json() == {
         "error": "Invalid priority: must be an integer from 1 to 5"}
+    assert TASKS == tasks_before
+
+@pytest.mark.parametrize("priority", [1, 5])
+def test_update_task_priority_valid(restore_tasks, priority):
+    tasks_before = copy.deepcopy(TASKS)
+    result = update_task_priority(2, {"priority": priority})
+    assert result is TASKS[2]
+    assert result == {**tasks_before[2], "priority": priority}
+    assert TASKS[1] == tasks_before[1]
+    assert TASKS[3] == tasks_before[3]
+
+@pytest.mark.parametrize("priority", [True, False, "3", 3.0, 2.5, 0, 6, -1, None])
+def test_update_task_priority_invalid_priority(restore_tasks, priority):
+    tasks_before = copy.deepcopy(TASKS)
+    with pytest.raises(ValidationError) as exc_info:
+        update_task_priority(2, {"priority": priority})
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.message == "Invalid priority: must be an integer from 1 to 5"
+    assert TASKS == tasks_before
+
+@pytest.mark.parametrize("updates, message", [
+    ({}, "Invalid priority: is required"),
+    ({"title": "x"}, "Invalid request: only priority can be updated"),
+    ({"priority": 2, "title": "x"}, "Invalid request: only priority can be updated"),
+    ({"priority": 2, "done": True}, "Invalid request: only priority can be updated"),
+    ([], "Invalid request: must be a JSON object"),
+    (None, "Invalid request: must be a JSON object"),
+])
+def test_update_task_priority_invalid_updates(restore_tasks, updates, message):
+    tasks_before = copy.deepcopy(TASKS)
+    with pytest.raises(ValidationError) as exc_info:
+        update_task_priority(2, updates)
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.message == message
+    assert TASKS == tasks_before
+
+@pytest.mark.parametrize("updates", [{"priority": 2}, {"priority": 9}])
+def test_update_task_priority_not_found(restore_tasks, updates):
+    tasks_before = copy.deepcopy(TASKS)
+    with pytest.raises(NotFoundError) as exc_info:
+        update_task_priority(999, updates)
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.message == "Task not found"
+    assert TASKS == tasks_before
+
+@pytest.mark.parametrize("priority", [1, 5])
+def test_api_update_task_priority(restore_tasks, client, priority):
+    expected = {**copy.deepcopy(TASKS[2]), "priority": priority}
+    response = client.patch("/api/tasks/2", json={"priority": priority})
+    assert response.status_code == 200
+    assert response.get_json() == expected
+    assert TASKS[2]["priority"] == priority
+    assert client.get("/api/tasks/2").get_json() == expected
+
+@pytest.mark.parametrize("priority", [None, True, False, "3", 3.0, 2.5, 0, 6, -1])
+def test_api_update_task_invalid_priority(restore_tasks, client, priority):
+    tasks_before = copy.deepcopy(TASKS)
+    response = client.patch("/api/tasks/2", json={"priority": priority})
+    assert response.status_code == 422
+    assert response.get_json() == {
+        "error": "Invalid priority: must be an integer from 1 to 5"}
+    assert TASKS == tasks_before
+
+@pytest.mark.parametrize("body, message", [
+    ({}, "Invalid priority: is required"),
+    ({"title": "x"}, "Invalid request: only priority can be updated"),
+    ({"priority": 2, "title": "x"}, "Invalid request: only priority can be updated"),
+    ([], "Invalid request: must be a JSON object"),
+])
+def test_api_update_task_invalid_body(restore_tasks, client, body, message):
+    tasks_before = copy.deepcopy(TASKS)
+    response = client.patch("/api/tasks/2", json=body)
+    assert response.status_code == 422
+    assert response.get_json() == {"error": message}
+    assert TASKS == tasks_before
+
+def test_api_update_task_null_body(restore_tasks, client):
+    tasks_before = copy.deepcopy(TASKS)
+    response = client.patch("/api/tasks/2", data="null",
+                            content_type="application/json")
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid request: must be a JSON object"}
+    assert TASKS == tasks_before
+
+def test_api_update_task_not_found(restore_tasks, client):
+    tasks_before = copy.deepcopy(TASKS)
+    response = client.patch("/api/tasks/999", json={"priority": 2})
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "Task not found"}
     assert TASKS == tasks_before

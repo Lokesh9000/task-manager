@@ -86,3 +86,30 @@ def create_task(title: str, user_id: int, priority: int = DEFAULT_PRIORITY) -> d
     TASKS[new_id] = {"id": new_id, "title": title,
                      "done": False, "user_id": user_id, "priority": priority}
     return TASKS[new_id]
+
+def update_task_priority(task_id: int, updates: object) -> dict:
+    """Update the priority of an existing task.
+
+    Args:
+        task_id: The unique identifier for the task.
+        updates: The requested changes. Must be a dictionary containing
+            only the key "priority".
+
+    Returns:
+        The updated task record as a dictionary.
+
+    Raises:
+        NotFoundError: If no task exists with the given ID.
+        ValidationError: If updates is not a dictionary, contains a field
+            other than priority, omits priority, or priority is not an
+            integer from 1 to 5.
+    """
+    task = get_task(task_id)
+    if type(updates) is not dict:
+        raise ValidationError("request", "must be a JSON object")
+    if any(field != "priority" for field in updates):
+        raise ValidationError("request", "only priority can be updated")
+    if "priority" not in updates:
+        raise ValidationError("priority", "is required")
+    task["priority"] = _validate_priority(updates["priority"])
+    return task

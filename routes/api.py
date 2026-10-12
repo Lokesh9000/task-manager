@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from services.tasks import get_task, create_task, process_order
+from services.tasks import get_task, create_task, process_order, update_task_priority
 from services.users import get_user
 from utils.errors import AppError
 
@@ -12,6 +12,10 @@ def handle_app_error(e):
 @api.route("/tasks/<int:task_id>", methods=["GET"])
 def get_task_route(task_id):
     return jsonify(get_task(task_id))
+
+@api.route("/tasks/<int:task_id>", methods=["PATCH"])
+def update_task_route(task_id):
+    return jsonify(update_task_priority(task_id, request.get_json()))
 
 @api.route("/tasks", methods=["POST"])
 def create_task_route():
