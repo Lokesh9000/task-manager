@@ -5,7 +5,7 @@ Python Flask API for managing tasks and users.
 ## Commands
 - Install dependencies: `python -m pip install -r requirements.txt`.
 - Run the full test suite with `python -m pytest -v`; the current baseline is 170 passing tests across `tests/test_tasks.py`, `tests/test_api.py`, and `tests/test_users.py`.
-- After each subagent or scoped change, run `.venv/Scripts/python -m pytest -q` from the repository root and record the exact result line before moving on.
+- After each subagent or scoped change, run `.venv/Scripts/python -m pytest -q` from the repository root and record the exact result line before moving on. This is the checkpoint `DECOMPOSITION.md` records after each subagent.
 - Run lint with `python -m ruff check .`. The codebase has 5 pre-existing Ruff findings, so do not introduce new findings or perform unrelated lint cleanup.
 
 ## Architecture

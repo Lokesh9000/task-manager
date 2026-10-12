@@ -41,5 +41,6 @@ All routes are under `/api`.
 ## Notes for the reader
 
 - An unset notification preference is `null`, not the string `"none"`. The reasoning is in the "Default `none`" row of `DECOMPOSITION.md`.
+- The `pytest -q` line in the Commands section of `CLAUDE.md` records the checkpoint run after each subagent in `DECOMPOSITION.md`. No session hit a missing command or the wrong interpreter, so it documents a convention, not a fix.
 - There is no database. Tasks and users are in-memory dictionaries (`TASKS`, `USERS`), so data resets when the app restarts.
 - The history contains an earlier PA 5 attempt on this project. The submitted work starts at the Week 4 starter commit `442e121` and continues in the commits after it. Commit IDs cited inside `PLAN_LOG.md` are mapped to the IDs in this repository under "Audit notes" at the end of that file.
