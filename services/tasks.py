@@ -1,10 +1,14 @@
 from services.users import get_user
-from utils.errors import NotFoundError
+from utils.errors import NotFoundError, ValidationError
+
+MIN_PRIORITY = 1
+MAX_PRIORITY = 5
+DEFAULT_PRIORITY = 3
 
 TASKS: dict[int, dict] = {
-    1: {"id": 1, "title": "Buy groceries",  "done": False, "user_id": 1},
-    2: {"id": 2, "title": "Write report",   "done": False, "user_id": 1},
-    3: {"id": 3, "title": "Call dentist",   "done": True,  "user_id": 2},
+    1: {"id": 1, "title": "Buy groceries",  "done": False, "user_id": 1, "priority": 3},
+    2: {"id": 2, "title": "Write report",   "done": False, "user_id": 1, "priority": 3},
+    3: {"id": 3, "title": "Call dentist",   "done": True,  "user_id": 2, "priority": 3},
 }
 
 def process_order(task_id: int) -> dict:
@@ -44,17 +48,24 @@ def get_tasks_for_user(user_id: int) -> list[dict]:
     get_user(user_id)
     return [task for task in TASKS.values() if task["user_id"] == user_id]
 
-def create_task(title: str, user_id: int) -> dict:
+def create_task(title: str, user_id: int, priority: int = DEFAULT_PRIORITY) -> dict:
     """Create a new task.
 
     Args:
         title: The title of the task.
         user_id: The unique identifier for the user who owns the task.
+        priority: The task priority from 1 (urgent) to 5 (low). Defaults to 3.
 
     Returns:
         The newly created task record as a dictionary.
+
+    Raises:
+        ValidationError: If priority is not an integer from 1 to 5.
     """
+    if (isinstance(priority, bool) or not isinstance(priority, int)
+            or not MIN_PRIORITY <= priority <= MAX_PRIORITY):
+        raise ValidationError("priority", "must be an integer from 1 to 5")
     new_id = max(TASKS.keys()) + 1
     TASKS[new_id] = {"id": new_id, "title": title,
-                     "done": False, "user_id": user_id}
+                     "done": False, "user_id": user_id, "priority": priority}
     return TASKS[new_id]

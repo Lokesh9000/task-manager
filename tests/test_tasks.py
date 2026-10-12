@@ -1,6 +1,16 @@
+import copy
 import pytest
-from services.tasks import process_order, get_task, get_tasks_for_user
-from utils.errors import NotFoundError
+from services.tasks import process_order, get_task, get_tasks_for_user, TASKS, create_task
+from utils.errors import NotFoundError, ValidationError
+
+@pytest.fixture
+def restore_tasks():
+    snapshot = copy.deepcopy(TASKS)
+    try:
+        yield
+    finally:
+        TASKS.clear()
+        TASKS.update(snapshot)
 
 def test_process_order_valid():
     result = process_order(1)
@@ -29,3 +39,28 @@ def test_get_tasks_for_user_invalid():
     with pytest.raises(NotFoundError) as exc_info:
         get_tasks_for_user(999)
     assert exc_info.value.message == "User not found"
+
+def test_seed_tasks_have_priority():
+    for task in TASKS.values():
+        assert type(task["priority"]) is int
+        assert 1 <= task["priority"] <= 5
+
+def test_create_task_default_priority(restore_tasks):
+    result = create_task("Default priority task", 1)
+    assert result["priority"] == 3
+    assert TASKS[result["id"]] is result
+
+def test_create_task_with_priority(restore_tasks):
+    urgent = create_task("Urgent task", 1, 1)
+    low = create_task("Low task", 1, priority=5)
+    assert TASKS[urgent["id"]]["priority"] == 1
+    assert TASKS[low["id"]]["priority"] == 5
+
+@pytest.mark.parametrize("priority", [0, 6, -1, "3", 2.5, None, True])
+def test_create_task_invalid_priority(restore_tasks, priority):
+    task_count = len(TASKS)
+    with pytest.raises(ValidationError) as exc_info:
+        create_task("Invalid priority task", 1, priority)
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.message == "Invalid priority: must be an integer from 1 to 5"
+    assert len(TASKS) == task_count
