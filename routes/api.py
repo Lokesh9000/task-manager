@@ -16,7 +16,11 @@ def get_task_route(task_id):
 @api.route("/tasks", methods=["POST"])
 def create_task_route():
     data = request.get_json()
-    return jsonify(create_task(data["title"], data["user_id"])), 201
+    if "priority" in data:
+        task = create_task(data["title"], data["user_id"], data["priority"])
+    else:
+        task = create_task(data["title"], data["user_id"])
+    return jsonify(task), 201
 
 @api.route("/users/<int:user_id>", methods=["GET"])
 def get_user_route(user_id):

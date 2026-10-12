@@ -79,3 +79,57 @@ None observed. The implementation was compared against each requirement in `plan
 ### Outcome
 
 The approved plan was implemented successfully. Session 1 was committed after verification. Session 2 has not been started.
+
+## PA 5, Task 1 — Session 2: Priority support in `POST /api/tasks`
+
+- **Date:** 2026-10-11
+- **Scope:** `routes/api.py` and the API tests only. `services/tasks.py` is not modified.
+- **Base commit:** `309a4ef` (PA5 Task 1 Session 1: add task priority service layer)
+- **Saved plan:** `plans/session2-original-plan.md`
+
+### Original plan
+
+Saved as `plans/session2-original-plan.md`. It proposed:
+
+- `create_task_route` forwards an optional `priority` from the JSON body to `create_task`, reusing the validation and default added in Session 1. No validation is added to the route.
+- The route checks whether the `priority` key is present rather than using `data.get("priority")`, so an explicit `null` reaches the service and is rejected instead of being treated as omitted.
+- When `priority` is omitted, the route calls `create_task` without it and the service default of 3 applies. The route does not import or repeat `DEFAULT_PRIORITY`.
+- Invalid values are rejected by the existing `ValidationError`, which the existing `@api.errorhandler(AppError)` turns into HTTP 422. The handler and status mapping are unchanged.
+- The response is the stored task, which already includes `priority`.
+- A new `tests/test_api.py` with its own `client` fixture and a local `TASKS` snapshot/restore fixture applied to every test, holding three tests (15 collected cases): priority omitted, valid priorities 1 to 5, and nine invalid values (`null`, `true`, `false`, `"3"`, `2.5`, `3.0`, `0`, `6`, `-1`).
+- Behavior for a missing `title` or `user_id`, or a non-object body, is left as it was.
+
+### Plan review
+
+Approved without amendment. The plan was saved to `plans/session2-original-plan.md` before review, and no amended plan was produced.
+
+### Implementation
+
+Two implementation files were changed:
+
+| File | Change |
+|---|---|
+| `routes/api.py` | `create_task_route` passes `data["priority"]` to `create_task` when the key is present, and otherwise calls it with two arguments. 5 insertions, 1 deletion. Imports are unchanged. |
+| `tests/test_api.py` | New file: the `client` fixture, an autouse `restore_tasks` fixture using the same deep-copy and `try/finally` restore as `tests/test_tasks.py`, and the three planned tests. |
+
+No other implementation file was changed, including `services/tasks.py`, `services/users.py`, `utils/errors.py`, `app.py`, `tests/test_tasks.py`, `requirements.txt` and `CLAUDE.md`.
+
+### Verification
+
+| Check | Command | Result |
+|---|---|---|
+| Baseline before implementation | `python -m pytest -v -p no:cacheprovider`, `python -m ruff check . --no-cache` | 16 passed; 5 Ruff findings |
+| Full suite | `python -m pytest -v -p no:cacheprovider` | 31 passed: 16 existing + 15 new API cases |
+| Lint | `python -m ruff check . --no-cache` | 5 findings, none new |
+
+The 15 new cases are 1 omitted-priority case (201, priority 3 returned and stored), 5 valid-priority cases (201, value returned and stored) and 9 invalid-priority cases (422, the existing error message, nothing stored).
+
+The 5 Ruff findings are the same pre-existing ones listed under Session 1 and were left in place, as `CLAUDE.md` requires. `routes/api.py` and `tests/test_api.py` introduce none.
+
+### Plan divergence
+
+None observed. The route body matches the code in `plans/session2-original-plan.md`, and the test names, parameter lists and assertions match the plan's test table.
+
+### Outcome
+
+The approved plan was implemented successfully. Session 3 has not been started.
