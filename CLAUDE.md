@@ -4,12 +4,16 @@ Python Flask API for managing tasks and users.
 
 ## Commands
 - Install dependencies: `python -m pip install -r requirements.txt`.
-- Run the full test suite with `python -m pytest -v`; the current baseline is 4 passing tests in `tests/test_tasks.py`.
-- Run lint with `python -m ruff check .`. The starting codebase has 6 existing Ruff findings, so do not introduce new findings or perform unrelated lint cleanup.
+- Run the full test suite with `python -m pytest -v` (`.venv/Scripts/python -m pytest -q` with the project virtual environment); the current baseline is 183 passing tests: 127 in `tests/test_tasks.py` and 56 in `tests/test_notifications.py`.
+- Run lint with `python -m ruff check .`. The codebase has 5 existing Ruff findings (`app.py` I001; `routes/api.py` I001 and F401; `tests/test_tasks.py` I001 and B017), so do not introduce new findings or perform unrelated lint cleanup.
+- Before finishing a change, also run `git diff --check` (expect no output) and `git status --short` (expect only the files the task names).
+- Check the path-protection hook with `python .claude/hooks/check_protect_paths.py`; it writes no file and exits 0 when every case behaves as expected.
 
 ## Architecture
 - Keep the request flow layered as `routes/api.py` → `services/*.py` → the module-level data stores such as `TASKS` and `USERS`.
 - Route functions in `routes/api.py` should handle HTTP concerns and call service functions rather than duplicating task or user logic.
+- `routes/api.py` is one blueprint mounted at `/api` by `app.py`. It serves `/tasks` (GET with optional `?priority=`, POST), `/tasks/<id>` (GET, PATCH priority), `/users` (GET), `/users/<id>` (GET) and `/users/<id>/notifications` (GET, PATCH).
+- `services/tasks.py` owns task priority (1 to 5, default 3) and its validation; `services/users.py` owns the notification preference (`email`, `sms`, `none`; default `none`) and its validation. Routes pass `request.get_json()` or query values straight to the service and do not validate them.
 - Use `services/users.py` as the canonical example for service-layer structure, validation, type hints, docstrings, and application errors.
 - Application errors belong in `utils/errors.py`; `routes/api.py` already converts `AppError` instances into HTTP responses.
 
@@ -26,6 +30,8 @@ Python Flask API for managing tasks and users.
 - Do not move `TASKS` or `USERS` out of `services/tasks.py` or `services/users.py`; this project currently uses those module-level dictionaries as its data store.
 - Do not add new packages to `requirements.txt` unless the task explicitly requires a dependency.
 - Do not fix unrelated existing Ruff findings in `app.py`, `routes/api.py`, or `tests/test_tasks.py` while completing a scoped service task.
+- Protected paths: `utils/errors.py`, `requirements.txt`, `PLAN_LOG.md`, `plans/` and `handoffs/`. A PreToolUse hook (`.claude/settings.json` running `.claude/hooks/protect_paths.py`) blocks Edit, Write and NotebookEdit on them. The hook does not inspect shell commands, so do not write to these paths through Bash or PowerShell either. If a task needs one of them changed, stop and ask the user.
+- `PLAN_LOG.md`, `plans/`, `handoffs/` and the completed sections of `DECOMPOSITION.md` are recorded evidence of earlier work; do not rewrite them.
 
 
 
