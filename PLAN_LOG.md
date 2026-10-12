@@ -4,7 +4,7 @@ COMP 4600/5300 PA 5, Task 1: Plan Mode sessions for the task-manager repository.
 
 | Session # | Prompt summary (15 words maximum) | Did you amend the plan? Yes/No | What you changed | Did output match amended plan? Yes/Partially/No |
 |---|---|---|---|---|
-| 1 | Add task priority defaults, validation, and service-layer tests. | Yes | Required `test_seed_tasks_have_default_priority` and all new priority tests to use `restore_tasks`, ensuring shared-state isolation. | Yes |
+| 1 | Add task priority defaults, validation, and service-layer tests. | Yes | Required `test_seed_tasks_have_default_priority` and all new priority tests to use `restore_tasks`, ensuring shared-state isolation. Claude followed that amendment. Divergence: Claude also added `assert TASKS[expected_id] is result` to `test_create_task_default_priority`, which the approved amended plan did not explicitly list. Why: Claude added an identity check beyond the plan's wording; it is compatible with the intended behaviour and introduced no defect. Claude's initial summary did not identify it as a divergence; the follow-up comparison did. | Partially |
 | 2 | Expose task priority through POST endpoint and add API tests. | No | No amendment; approved the original plan without changes. | Yes |
 | 3 | Implement PATCH task priority updates with validation and tests. | Yes | Added API-level JSON null request test to cover previously untested 422 behavior. | Yes |
 | 4 | Add GET task listing with optional validated priority filtering. | No | No amendment; approved the original plan without changes. | Yes |
@@ -61,6 +61,29 @@ None of these changes the behaviour described in the amended plan.
    the fixture was added above it. It is the same finding on the same unedited test.
 3. Some lines are long: the three seed rows in `services/tasks.py` are exactly 88 characters and
    the import line in `tests/test_tasks.py` is 90 characters. Ruff reports no line-length finding.
+
+### Divergence from the amended plan
+
+Recorded on 2026-10-11 after an evidence audit of the Session 1 transcript. The result column for
+Session 1 was changed from "Yes" to "Partially" at the same time. Nothing above was removed.
+
+- Amended plan: `plans/session1-amended-plan.md` describes `test_create_task_default_priority` as
+  "omitted priority -> 3; other fields and next ID as before". The session prompt said "After
+  approval, implement only the approved changes."
+- Actual test code: the test also contains `assert TASKS[expected_id] is result`
+  (`tests/test_tasks.py`, committed in `246b401`), an identity check the amended plan did not
+  explicitly list. It is item 1 under "Minor deviations observed" above.
+- Transcript: the assertion was applied in the Session 1 edit to `tests/test_tasks.py` (transcript
+  line 81). Claude's first summary (line 99) said "There are no divergences from the approved
+  plan" and mentioned the assertion under "Beyond the plan's wording". The follow-up comparison
+  (line 114) listed it as a deviation "which the plan did not list". The transcript gives no
+  reason for adding it beyond describing what it checks.
+- What it is not: Claude did not ignore the amendment and did not introduce a defect. All four new
+  priority tests use `restore_tasks`, the fixture restores `TASKS` in a `finally` block, and the
+  assertion is compatible with the intended behaviour.
+- Size of the difference: minor. It is one added assertion in one test, and a grader may
+  reasonably consider it normal implementation discretion. It is recorded as "Partially" because
+  the output contains something the approved amended plan did not list.
 
 ### Coverage improvement opportunity
 

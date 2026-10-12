@@ -4,6 +4,10 @@ COMP 4600/5300 PA 5, Task 2: user notification preference, split across three su
 
 This document was written before any subagent ran. The prompts in it are used verbatim.
 
+It was drafted with Claude Code, in the same session as Task 1 Plan Mode Session 4, and reviewed
+before any subagent ran. The assignment asks for it to be written before opening Claude Code; that
+was not done and cannot be changed afterwards. See "Divergence".
+
 ## Starting checkpoint
 
 - Commit: `48813e4` (`PA 5 Task 1: GET priority filtering and Plan Mode session 4`)
@@ -499,6 +503,23 @@ Finish by summarising what you added.
 
 ---
 
+## Subagent table
+
+Reconstructed after execution to present each subagent in the assignment's six fields. Every field
+except the pytest result restates the "Subagent A/B/C" sections and prompts above, which are
+unchanged. The pytest lines are the actual results from each subagent's session transcript.
+
+| Field | SA-A: User service | SA-B: API integration | SA-C: Tests |
+|---|---|---|---|
+| Subagent # | SA-A: User service | SA-B: API integration | SA-C: Tests |
+| Input | `CLAUDE.md`, `DECOMPOSITION.md`, `services/users.py`, `services/tasks.py`, `utils/errors.py`, `tests/test_tasks.py` | `CLAUDE.md`, `DECOMPOSITION.md`, `handoffs/subagent-a-service.md`, `services/users.py`, `routes/api.py`, `app.py`, `utils/errors.py`, `tests/test_tasks.py` | `CLAUDE.md`, `DECOMPOSITION.md`, `handoffs/subagent-a-service.md`, `handoffs/subagent-b-api.md`, `services/users.py`, `routes/api.py`, `app.py`, `utils/errors.py`, `tests/test_tasks.py` |
+| Task | Adds notification preference storage, default, validation, retrieval, update and user listing to the service layer. | Exposes the user service functions over HTTP as three routes. | Writes service-level and API-level tests for the notification preference against the agreed contract. |
+| Output | Modifies `services/users.py`; creates `handoffs/subagent-a-service.md`. `pytest -q`: `127 passed in 0.28s`. | Modifies `routes/api.py`; creates `handoffs/subagent-b-api.md`. `pytest -q`: `127 passed in 0.24s`. | Creates `tests/test_notifications.py` and `handoffs/subagent-c-tests.md`. `pytest -q`: `183 passed in 0.30s` (127 existing, 56 new). |
+| Constraint | Must not touch `routes/api.py`, `services/tasks.py`, anything under `tests/`, `app.py`, `utils/errors.py`, `requirements.txt`, `CLAUDE.md`, `DECOMPOSITION.md`, `PLAN_LOG.md`, `plans/`, or any other file. | Must not touch `services/users.py`, `services/tasks.py`, anything under `tests/`, `app.py`, `utils/errors.py`, `requirements.txt`, `CLAUDE.md`, `DECOMPOSITION.md`, `PLAN_LOG.md`, `plans/`, `handoffs/subagent-a-service.md`, or any other file. | Must not touch `tests/test_tasks.py`, `services/users.py`, `services/tasks.py`, `routes/api.py`, `app.py`, `utils/errors.py`, `requirements.txt`, `CLAUDE.md`, `DECOMPOSITION.md`, `PLAN_LOG.md`, `plans/`, `handoffs/subagent-a-service.md`, `handoffs/subagent-b-api.md`, or any other file. |
+| Hand-off | `handoffs/subagent-a-service.md`: function signatures, validation order, exact error messages, verification output. Needed by B and C. | `handoffs/subagent-b-api.md`: each route's method, path, bodies and status codes, verification output. Needed by C. | `handoffs/subagent-c-tests.md`: pytest summary, per-test coverage, defects or gaps found. Needed by the reviewer. |
+
+No test failed in any subagent session, so no fix was needed and none is recorded.
+
 ## Verification after all three subagents
 
 1. `.venv/Scripts/python -m pytest -q`: 127 existing tests plus the new tests, all passing.
@@ -557,9 +578,9 @@ The implementation was also read against the "Agreed contract":
 
 | Subagent | Prompt used verbatim | Stayed in boundary | pytest result | Divergence observed |
 |---|---|---|---|---|
-| A | Not verifiable afterwards. The A session left no record of the prompt it was given. | Consistent with the boundary. Verified: `services/users.py` is modified and `handoffs/subagent-a-service.md` exists. Reported by A: only `services/users.py` was modified. | Reported by A: `127 passed in 0.28s`. Not re-run at that point in time; the 127 existing tests pass now (verified). | None. A reports "No difference from the agreed contract", and reading the file against the contract confirms it (verified). |
-| B | Not verifiable afterwards, for the same reason. | Consistent with the boundary. Verified: the `routes/api.py` diff contains only the import line and three new routes, and `handoffs/subagent-b-api.md` exists. Reported by B: only `routes/api.py` was modified and A's handoff was not edited. | Reported by B: `127 passed in 0.24s`. Not re-run at that point in time. | None. B reports "No difference from the agreed contract", and reading the file against the contract confirms it (verified). |
-| C | Yes, by reading: the prompt received in the C session matched the "Prompt C" block above. This was a read-through comparison, not a byte-for-byte diff. | Yes. Verified in-session: C created `tests/test_notifications.py` and `handoffs/subagent-c-tests.md` and wrote to no other file. | Verified: `183 passed` (127 existing + 56 new). All 56 new cases passed on the first run; no test was weakened, skipped or changed to get a green run. | None. C's handoff records "No defects or gaps found." |
+| A | Yes. The first message of the A session transcript is byte-identical to "Prompt A" (4,992 characters). | Yes for writes. The transcript shows A wrote only `services/users.py` (through a shell heredoc, not the Edit tool) and `handoffs/subagent-a-service.md`. | Verified in the A transcript: `127 passed in 0.28s`. | No constraint violated, and no difference from the agreed contract. Input not followed exactly: A read the whole of `DECOMPOSITION.md`, not only the two named sections, and did not open `tests/test_tasks.py`. |
+| B | Yes. The first message of the B session transcript is byte-identical to "Prompt B" (5,306 characters). | Yes for writes. The transcript shows B edited only `routes/api.py` and created `handoffs/subagent-b-api.md`. | Verified in the B transcript: `127 passed in 0.24s`. | No constraint violated, and no difference from the agreed contract. Input not followed exactly: B read the whole of `DECOMPOSITION.md` and did not open `tests/test_tasks.py`. |
+| C | Yes. The first message of the C session transcript is byte-identical to "Prompt C" (6,233 characters). | Yes. C created `tests/test_notifications.py` and `handoffs/subagent-c-tests.md` and wrote to no other file. | Verified: `183 passed` (127 existing + 56 new). All 56 new cases passed on the first run; no test was weakened, skipped or changed to get a green run. | No constraint violated. Input not followed exactly: C read the whole of `DECOMPOSITION.md`. C's handoff records "No defects or gaps found." |
 
 What Git can and cannot show about boundaries: the set of changed files is exactly the union of
 the three allowed sets, and no forbidden file changed. Git cannot attribute an edit to a
@@ -616,3 +637,32 @@ confirmed that it had been implemented as written.
    contract, would have given A and B failing tests to turn green.
 5. State the expected `git status` output in the prompts from an actual run, including
    pre-existing untracked files, so a subagent does not have to explain a mismatch.
+
+### Corrections after reading the subagent transcripts
+
+Added on 2026-10-11. This section was first written without the Subagent A and B transcripts and
+said that their prompts and pytest runs could not be checked afterwards. That was wrong: the three
+session transcripts exist locally. The "Per-subagent results" table above now reflects them; the
+rest of this section is left as first written, so statements elsewhere in it that describe A and B
+as only "reported" are superseded by that table.
+
+Answers to the assignment's three questions, on the transcript evidence:
+
+- Did Claude follow the constraint field for every subagent? Yes. No subagent modified a file its
+  constraint named. The Input field was not followed exactly: all three read the whole of this
+  document instead of the two sections their prompt named, and A and B did not open
+  `tests/test_tasks.py`, which their prompts listed under READ FIRST as "reference only".
+- Did any subagent's output break the next subagent's assumption? No. Both handoffs matched the
+  agreed contract, B did not have to stop, and C found no defect, so there was nothing to recover.
+- What would I change a second time? Write this document before opening Claude Code and in the
+  six-field format from the start; record each pytest result beside the Output field when the
+  subagent finishes; and give each subagent only its own section and prompt, so that the Input
+  field is something the subagent cannot exceed.
+
+One further observation: Subagent A wrote `services/users.py` with a shell heredoc
+(`cat > services/users.py`), not with the Edit or Write tool. The file was inside A's boundary, so
+no constraint was violated, but a hook that inspects only file-editing tools would not see a write
+made this way.
+
+Not repairable afterwards: this document was drafted in Claude Code, and the six-field table and
+the pytest results beside Output were added after execution.
