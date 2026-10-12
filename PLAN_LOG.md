@@ -1,5 +1,16 @@
 # Plan Log
 
+## Supervision Log
+
+| Session # | Prompt summary (≤15 words) | Did you amend the plan? | What you changed | Did output match amended plan? |
+|---|---|---|---|---|
+| 1 | Plan service-layer task priority (1–5, default 3) with validation and tests. | Yes | Required a `restore_tasks` fixture that snapshots `TASKS` and restores it in `finally`, used by every new test that mutates `TASKS`. Also required results that do not depend on execution order and an expected test count checked against the parametrized cases; the amended plan answered with a count of 16 and a reverse-order run. The original plan relied only on new tests not asserting fixed task IDs. | Yes |
+| 2 | Plan optional priority support in POST /api/tasks, reusing service validation, with API tests. | No | No amendment; the original plan was approved as written. | Yes |
+| 3 | Plan PATCH `/api/tasks/<id>` priority updates with validation, 404 handling and data-integrity tests. | Yes | Amendment: required explicit 422 responses for a missing `priority` and for non-object JSON bodies (the original route called `data.get("priority")` on any body), plus API tests for `{}`, JSON `null` and a JSON array. Divergence: the production code matched, but the API tests in `tests/test_api.py` differed from `plans/session3-amended-plan.md` in four ways: the null and array tests were combined into one renamed test with different array inputs, the empty-object test kept its original name and gained a case, an unplanned ignored-fields test was added, and the non-object-before-lookup test was renamed. Why: the amendment existed in two versions. The saved plan, `plans/session3-amended-plan.md`, is a reconstruction written from a revision drafted in a separate conversation, outside Plan Mode; it was not executed verbatim. The executed plan was the Plan Mode session's own revision (transcript `60d49598`): that session never read the saved file, received only the approval of decisions 1 and 2, revised its own plan, and implemented that. The executed plan lists the test names and cases that were actually implemented, and it is preserved as `plans/session3-executed-plan.md`. One change was also made inside that session: the first test run was 1 failed, 72 passed, because the Flask test client sends no body for `json=None`, so the non-object bodies were changed to literal JSON strings and the rerun gave 73 passed. | Partially |
+| 4 | Plan optional ?priority= filter on GET /api/tasks with isolated service and API tests. | No | No amendment; the original plan was approved as written. Divergence: the production code matched, but the tests have five additions beyond the plan and nothing missing (an extra `user_id=1` query case, task-order assertions, extra snapshot and full-response assertions, a per-task priority assertion, and a second filtered call). Why: not recorded. The implementing session's summary (transcript `67b67774`) said the filter was implemented as planned and did not mention the additions. | Partially |
+
+Sessions 1 and 3 were amended. Sessions 3 and 4 are marked Partially because of test-level differences only; in both, the production code matched the approved plan. The detailed evidence for each row is in the session entries below.
+
 ## PA 5, Task 1 — Session 1: Service-layer task priority
 
 - **Date:** 2026-10-11
@@ -215,7 +226,19 @@ Minor coverage gap: an unknown task ID with an empty JSON object (`{}`) is not d
 
 ### Outcome
 
-The approved amended plan was implemented successfully. Session 4 has not been started.
+The amended behavior was implemented successfully; see the correction below for which plan was executed. Session 4 has not been started.
+
+### Correction added 2026-10-12: saved plan versus executed plan
+
+A later review of the Session 3 transcripts found that this entry uses "the amended plan" for two different documents.
+
+- **Saved reconstructed plan:** `plans/session3-amended-plan.md`. It was written in a separate conversation, outside Plan Mode, from a revision drafted there. Its "Decisions to confirm" list is what the approval of decisions 1 and 2 refers to. It was not executed verbatim.
+- **Executed plan:** the Plan Mode session that implemented Session 3 (transcript `60d49598`) did not read the saved file. After receiving the approval of decisions 1 and 2 it revised its own Plan Mode plan and implemented that. The executed plan is preserved as `plans/session3-executed-plan.md`, a byte-for-byte copy (10,084 bytes, SHA-256 `5afe4abcd97cb9c92234d89e37e1c78af9c87c103ba1149b59d80b60c9a41cf6`) of that session's Plan Mode file, `pasted-content-id-03f1-pa5-task-ethereal-crescent.md`. The transcript shows the session last edited that file at 03:47:30 UTC, before the plan was approved at 03:47:42 and before the first implementation edit at 03:47:53, and the file has not changed since. One caveat: the plan text recorded with the approval call differs from the file in the API test list, where it has one line for the missing-priority test and the file has four lines; that last edit to the file was made in the same step as the approval request. The implemented tests follow the file.
+- **Where they agree:** the two approved decisions, the service-layer design and the PATCH route code. This is why the production code matches the saved plan.
+- **Where they differ:** the API test list. The four differences under "Plan divergence" are differences between the saved plan and the executed plan, and the implementation follows the executed plan's test names and cases.
+- **Test runs:** the first run after implementation was 1 failed, 72 passed. `test_update_task_non_object_body[None]` got 415, not 422, because the Flask test client sends no body for `json=None`. The executed plan had listed the non-object bodies as Python values; the test was changed to send literal JSON strings, and the rerun gave 73 passed. The Verification table above records only the final result.
+
+The "Approved plan" heading and the comparison under "Plan divergence" should be read with this correction: they describe the saved reconstructed plan. The original saved plan files are unchanged; `plans/session3-executed-plan.md` was added on 2026-10-12 alongside them.
 
 ## PA 5, Task 1 — Session 4: Optional `?priority=` filter on `GET /api/tasks`
 
