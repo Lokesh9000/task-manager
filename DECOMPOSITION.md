@@ -1,7 +1,7 @@
 # PA 5, Task 2 — Subagent Pipeline: User Notification Preference
 
-- **Finalized:** 2026-10-12, before any implementation subagent started. It was drafted with Claude Code in a preparation session that changed no implementation files.
-- **Base commit:** `b089889` (PA5 Task 1 Session 4: add priority filtering)
+- **Finalized:** 2026-10-12, before any implementation subagent started. It was drafted with Claude Code in a preparation session that changed no implementation files. The assignment says to write the decomposition before opening Claude Code, so that instruction was not met literally; it was finalized before SA-1 started.
+- **Base commit:** `b089889` (PA5 Task 1 Session 4: add priority filtering). This is the original local ID; it was published as `0e47292`. See "Audit notes" at the end of `PLAN_LOG.md` for the full mapping.
 - **Status:** All four subagents have run. Their results, the final audit and the Divergence section are recorded from the actual runs.
 
 ## Baseline
@@ -32,6 +32,8 @@ Design decisions, made where the assignment does not specify behavior:
 | Allowed preferences | `"email"`, `"sms"`, `"none"` (exact, case-sensitive strings) |
 | Default stored value | Python `None` / JSON `null` |
 | Meaning of `"none"` | An explicit choice: notifications disabled. It is distinct from the unset default `null`. |
+| "Nullable column" | The project has no database or ORM; user records live in the in-memory `USERS` dictionary. The assignment's nullable column is the `notification_pref` key on each user record, and `None` is its null value. |
+| Default `none` | The assignment lists the default as `none`. This pipeline reads that as "no notifications unless the user chooses" and stores it as `null`; the string `"none"` is a separate, explicit value. A reader who expects the string `"none"` as the default will see `null` instead. |
 | PATCH with JSON `null` | Resets the preference to the default |
 | PATCH body | `{"notification_pref": "email"}` |
 | PATCH success | HTTP 200 with the updated user object |
@@ -404,7 +406,7 @@ Yes. No file-boundary violation was found for any subagent.
 
 Two things came close to a boundary without crossing it:
 
-- **SA-1 working directory.** The SA-1 session initially started in `C:\Users\Lokes`, not in the repository. Two file searches from that directory timed out. It then found three copies of the project (`Desktop\task-manager-OLD-PA5-BACKUP\repo`, `Desktop\task-manager-pa5-fresh` and `Downloads\task-manager\task-manager`), inspected each read-only, and selected the intended repository, `C:\Users\Lokes\Desktop\task-manager-pa5-fresh`, before editing. The transcript shows edits to that repository's `services/users.py` only; the other two copies were not edited. This is not a file-boundary violation, but the prompt named files only by relative path, so it did not rule out editing a different copy.
+- **SA-1 working directory.** The SA-1 session initially started in `C:\Users\Lokes`, not in the repository. Two file searches from that directory timed out. It then found three copies of the project (`Desktop\task-manager-OLD-PA5-BACKUP\repo`, `Desktop\task-manager-pa5-fresh` and `Downloads\task-manager\task-manager`), inspected each read-only, and selected the intended repository, `C:\Users\Lokes\Desktop\task-manager-pa5-fresh`, before editing. The transcript shows edits to that repository's `services/users.py` only; the other two copies were not edited. This is not a file-boundary violation, but the prompt named files only by relative path, so it did not rule out editing a different copy. Because the session started there, the project's `CLAUDE.md` was not loaded automatically in SA-1, and SA-1 did not read it; its prompt carried its constraints.
 - **SA-2 shared file.** SA-1 and SA-2 both had `services/users.py` as their Output, so `git status` could not show whether SA-2 had altered SA-1's work. SA-2 recorded `git diff -- services/users.py` before and after its edits and compared the two. The comparison showed only the three appended functions as new, and every SA-1 line still present. The uncommitted diff of that file went from 11 insertions and 3 deletions after SA-1 to 57 insertions and 3 deletions after SA-2.
 
 `DECOMPOSITION.md` was modified between subagent runs to record results. Those edits were made in a separate documentation session, not by a subagent, so each later subagent correctly reported the file as already modified before it started.

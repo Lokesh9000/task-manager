@@ -9,7 +9,7 @@
 | 3 | Plan PATCH `/api/tasks/<id>` priority updates with validation, 404 handling and data-integrity tests. | Yes | Amendment: required explicit 422 responses for a missing `priority` and for non-object JSON bodies (the original route called `data.get("priority")` on any body), plus API tests for `{}`, JSON `null` and a JSON array. Divergence: the production code matched, but the API tests in `tests/test_api.py` differed from `plans/session3-amended-plan.md` in four ways: the null and array tests were combined into one renamed test with different array inputs, the empty-object test kept its original name and gained a case, an unplanned ignored-fields test was added, and the non-object-before-lookup test was renamed. Why: the amendment existed in two versions. The saved plan, `plans/session3-amended-plan.md`, is a reconstruction written from a revision drafted in a separate conversation, outside Plan Mode; it was not executed verbatim. The executed plan was the Plan Mode session's own revision (transcript `60d49598`): that session never read the saved file, received only the approval of decisions 1 and 2, revised its own plan, and implemented that. The executed plan lists the test names and cases that were actually implemented, and it is preserved as `plans/session3-executed-plan.md`. One change was also made inside that session: the first test run was 1 failed, 72 passed, because the Flask test client sends no body for `json=None`, so the non-object bodies were changed to literal JSON strings and the rerun gave 73 passed. | Partially |
 | 4 | Plan optional ?priority= filter on GET /api/tasks with isolated service and API tests. | No | No amendment; the original plan was approved as written. Divergence: the production code matched, but the tests have five additions beyond the plan and nothing missing (an extra `user_id=1` query case, task-order assertions, extra snapshot and full-response assertions, a per-task priority assertion, and a second filtered call). Why: not recorded. The implementing session's summary (transcript `67b67774`) said the filter was implemented as planned and did not mention the additions. | Partially |
 
-Sessions 1 and 3 were amended. Sessions 3 and 4 are marked Partially because of test-level differences only; in both, the production code matched the approved plan. The detailed evidence for each row is in the session entries below.
+Sessions 1 and 3 were amended. Sessions 3 and 4 are marked Partially because of test-level differences only; in both, the production code matched the approved plan. The detailed evidence for each row is in the session entries below. Clarifications found in a later audit, including a mapping from the commit IDs cited here to the IDs on GitHub, are collected under "Audit notes" at the end of this file.
 
 ## PA 5, Task 1 — Session 1: Service-layer task priority
 
@@ -323,3 +323,34 @@ Coverage gaps:
 ### Outcome
 
 The approved plan was implemented successfully. Task 2 has not been started.
+
+## Audit notes
+
+Added 2026-10-12, after a read-only audit of the published repository against the session transcripts. These notes clarify the entries above. Nothing above was rewritten, and the saved plans in `plans/` were not changed.
+
+### Commit IDs
+
+The session entries cite the original local commit IDs. The same commits were later published on GitHub on top of an earlier history, which gave them new IDs:
+
+| Cited as | Published as | Commit |
+|---|---|---|
+| `eeaf95f` | `442e121` | Week 4 starter: task-manager before PA 5 |
+| `309a4ef` | `836cbcd` | PA5 Task 1 Session 1: add task priority service layer |
+| `37990e1` | `f5f0939` | PA5 Task 1 Session 2: support priority in POST API |
+| `1420231` | `f9f37fe` | PA5 Task 1 Session 3: add PATCH priority updates |
+| `b089889` | `0e47292` | PA5 Task 1 Session 4: add priority filtering |
+| `fdf93c5` | `f767d7a` | PA5 Task 2: document subagent decomposition |
+
+`plans/session2-original-plan.md` and `plans/session4-original-plan.md` also cite local IDs. They are saved evidence and were left as written.
+
+### Session 1: how implementation was approved
+
+The amendment was typed inside the Plan Mode session, and the revised plan was approved by a typed message, after which implementation started. Unlike Sessions 2 to 4, the Session 1 transcript has no recorded Plan Mode exit before the first implementation edit. The "Yes" for the amendment in the table is not affected.
+
+### Session 3: what was sent into the Plan Mode session
+
+The only amendment text sent into the Plan Mode session was the approval of two decisions: a missing `priority` returns 422 with "Invalid priority: is required", and non-object JSON bodies return 422 before the task lookup. Decisions 3 and 4 were left unchanged. The extra API tests for `{}`, JSON `null` and a JSON array that are listed in this session's table row were drafted in the separate conversation described in the correction above, not typed into the Plan Mode session.
+
+### Session 4: working directory
+
+The Session 4 Plan Mode session started in the user's home folder, not in the repository, so the project's `CLAUDE.md` was not loaded automatically. The session read `CLAUDE.md` and the code by absolute path before planning, and all of the changes it made are in this repository.
