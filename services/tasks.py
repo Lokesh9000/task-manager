@@ -11,6 +11,19 @@ TASKS: dict[int, dict] = {
     3: {"id": 3, "title": "Call dentist",   "done": True,  "user_id": 2, "priority": 3},
 }
 
+def _validate_priority(priority: int) -> None:
+    """Validate a task priority.
+
+    Args:
+        priority: The priority value to validate.
+
+    Raises:
+        ValidationError: If priority is not an integer from 1 to 5.
+    """
+    if (isinstance(priority, bool) or not isinstance(priority, int)
+            or not MIN_PRIORITY <= priority <= MAX_PRIORITY):
+        raise ValidationError("priority", "must be an integer from 1 to 5")
+
 def process_order(task_id: int) -> dict:
     task = TASKS[task_id]
     task["done"] = True
@@ -62,10 +75,27 @@ def create_task(title: str, user_id: int, priority: int = DEFAULT_PRIORITY) -> d
     Raises:
         ValidationError: If priority is not an integer from 1 to 5.
     """
-    if (isinstance(priority, bool) or not isinstance(priority, int)
-            or not MIN_PRIORITY <= priority <= MAX_PRIORITY):
-        raise ValidationError("priority", "must be an integer from 1 to 5")
+    _validate_priority(priority)
     new_id = max(TASKS.keys()) + 1
     TASKS[new_id] = {"id": new_id, "title": title,
                      "done": False, "user_id": user_id, "priority": priority}
     return TASKS[new_id]
+
+def update_task_priority(task_id: int, priority: int) -> dict:
+    """Update the priority of an existing task.
+
+    Args:
+        task_id: The unique identifier for the task.
+        priority: The new priority from 1 (urgent) to 5 (low).
+
+    Returns:
+        The updated task record as a dictionary.
+
+    Raises:
+        NotFoundError: If no task exists with the given ID.
+        ValidationError: If priority is not an integer from 1 to 5.
+    """
+    task = get_task(task_id)
+    _validate_priority(priority)
+    task["priority"] = priority
+    return task

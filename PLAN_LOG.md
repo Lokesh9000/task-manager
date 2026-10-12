@@ -133,3 +133,86 @@ None observed. The route body matches the code in `plans/session2-original-plan.
 ### Outcome
 
 The approved plan was implemented successfully. Session 3 has not been started.
+
+## PA 5, Task 1 — Session 3: `PATCH /api/tasks/<id>` priority updates
+
+- **Date:** 2026-10-11
+- **Scope:** `services/tasks.py`, `routes/api.py`, `tests/test_tasks.py` and `tests/test_api.py`.
+- **Base commit:** `37990e1` (PA5 Task 1 Session 2: support priority in POST API)
+- **Saved plans:** `plans/session3-original-plan.md`, `plans/session3-amended-plan.md`
+
+### Original plan
+
+Saved as `plans/session3-original-plan.md`, a byte-for-byte copy of the Plan Mode plan file. It proposed:
+
+- A service-layer `update_task_priority(task_id, priority)` in `services/tasks.py` that looks the task up with `get_task()`, validates the priority, then assigns it, so the route never touches `TASKS` directly.
+- A shared private helper `_validate_priority()` holding the priority rule, called by both `create_task()` and `update_task_priority()`, with `create_task()`'s behavior, signature and docstring unchanged.
+- A `PATCH /api/tasks/<id>` route in `routes/api.py` that passes `data.get("priority")` to the service and returns 200 with the updated task. Errors go through the existing `@api.errorhandler(AppError)`: 404 for an unknown task, 422 for an invalid priority, with the lookup first.
+- New service tests in `tests/test_tasks.py` and API tests in `tests/test_api.py`, each rejection test asserting `TASKS` is unchanged.
+
+The original plan treated a body without a `priority` key like `null`, and left non-object JSON bodies unhandled as out of scope.
+
+### Amendment requested
+
+The plan was not approved as written. The reviewer pointed out that the proposed route calls `data.get("priority")` without checking that the JSON body is an object, so JSON `null`, arrays and other non-object bodies could raise an unhandled exception.
+
+Requested changes:
+
+- Handle a missing `priority` and non-object JSON bodies explicitly, with a controlled HTTP 422 response that uses the existing error-handling conventions.
+- Keep valid updates, invalid-value validation and missing-task behavior unchanged.
+- Preserve the service-layer architecture and existing file boundaries.
+- Add API tests for an empty JSON object, JSON `null` and a JSON array, and ensure rejected requests do not mutate `TASKS`.
+
+### Approved plan
+
+Saved as `plans/session3-amended-plan.md`. The revision was presented in the conversation outside Plan Mode, so this file was written from that text rather than copied from a Plan Mode plan file. The service-layer design is the same as in the original plan. The route design adds two checks before the service call, both raising the existing `ValidationError`:
+
+- A body that is not a JSON object returns 422 `Invalid request body: must be a JSON object`.
+- A body without a `priority` key returns 422 `Invalid priority: is required`.
+
+Approved decisions:
+
+- A missing `priority` gets its own message, `Invalid priority: is required`, rather than reusing the invalid-value message.
+- Body-shape checks run in the route before the task lookup, so a non-object body returns 422 even for an unknown task ID.
+- The resulting order is: body is an object (422), `priority` key present (422), task exists (404), priority value valid (422), then assign.
+- Other keys in the body are ignored. Malformed JSON and a missing JSON content type stay out of scope.
+
+### Implementation
+
+Four implementation files were changed:
+
+| File | Change |
+|---|---|
+| `services/tasks.py` | Added `_validate_priority()` and `update_task_priority()`; `create_task()` calls the helper instead of its inline check. 33 insertions, 3 deletions. |
+| `routes/api.py` | Imported `update_task_priority` and `ValidationError`; added `update_task_route` for `PATCH /tasks/<int:task_id>` with the two body checks. 11 insertions, 2 deletions. |
+| `tests/test_tasks.py` | Extended the import; added 4 test functions (16 collected cases). Existing tests are unchanged. |
+| `tests/test_api.py` | Added 9 test functions (26 collected cases). Existing tests are unchanged. |
+
+`git diff --stat`: 4 files changed, 150 insertions, 6 deletions. The 42 new test cases are 16 service cases and 26 API cases.
+
+No other implementation file was changed, including `utils/errors.py`, the `AppError` handler, `app.py`, `services/users.py`, `requirements.txt` and `CLAUDE.md`.
+
+### Verification
+
+| Check | Command | Result |
+|---|---|---|
+| Baseline at `37990e1` | `pytest -q`, `ruff check .` on an export of the base commit | 31 passed; 5 Ruff findings |
+| Full suite | `.venv/Scripts/python -m pytest -q` | 73 passed: 31 existing + 42 new |
+| Lint | `.venv/Scripts/python -m ruff check .` | 5 findings, none new |
+
+The 5 Ruff findings are the same pre-existing ones listed under Session 1, at the same locations, and were left in place, as `CLAUDE.md` requires.
+
+### Plan divergence
+
+The production code in `services/tasks.py` and `routes/api.py` matches `plans/session3-amended-plan.md`. The divergences are confined to how the API tests in `tests/test_api.py` are named and grouped; none changes behavior:
+
+1. The planned `test_update_task_json_null` and `test_update_task_json_array` were combined into one `test_update_task_non_object_body`, parametrized over `[]`, `[1]`, `"3"`, `3` and `null`. The planned array inputs were `[]` and `[{"priority": 2}]`.
+2. The empty-object test kept its original name, `test_update_task_missing_priority`, instead of the planned `test_update_task_empty_object`, and gained a second missing-key case, `{"title": "No priority"}`.
+3. `test_update_task_ignores_other_fields` was added although it was not in the plan. It pins the decision that other body keys are ignored.
+4. The planned `test_update_task_not_found_with_non_object_body` was named `test_update_task_non_object_body_checked_before_lookup`, with the same assertions.
+
+Minor coverage gap: an unknown task ID with an empty JSON object (`{}`) is not directly tested. The route handles it, because the missing-key check runs before the service call; only the unknown-task case with `[]` is pinned by a test.
+
+### Outcome
+
+The approved amended plan was implemented successfully. Session 4 has not been started.

@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
-from services.tasks import get_task, create_task, process_order
+from services.tasks import get_task, create_task, process_order, update_task_priority
 from services.users import get_user
-from utils.errors import AppError
+from utils.errors import AppError, ValidationError
 
 api = Blueprint("api", __name__)
 
@@ -12,6 +12,15 @@ def handle_app_error(e):
 @api.route("/tasks/<int:task_id>", methods=["GET"])
 def get_task_route(task_id):
     return jsonify(get_task(task_id))
+
+@api.route("/tasks/<int:task_id>", methods=["PATCH"])
+def update_task_route(task_id):
+    data = request.get_json()
+    if not isinstance(data, dict):
+        raise ValidationError("request body", "must be a JSON object")
+    if "priority" not in data:
+        raise ValidationError("priority", "is required")
+    return jsonify(update_task_priority(task_id, data["priority"]))
 
 @api.route("/tasks", methods=["POST"])
 def create_task_route():
