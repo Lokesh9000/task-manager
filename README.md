@@ -8,10 +8,16 @@ Flask task manager used for COMP 4600/5300 PA 5 ("Plan, Decompose, and Supervise
 |---|---|---|
 | Task 1 | `PLAN_LOG.md` | Supervision log: four Plan Mode sessions, two amendments, and the places where the output did not fully match the plan. The saved plans are in `plans/`. |
 | Task 2 | `DECOMPOSITION.md` | Subagent table, the four prompts as issued, the `pytest -q` result for each subagent, and the Divergence section. |
-| Task 3A | `RETRO.md` | Four-paragraph retrospective. |
+| Task 3A | `RETRO_PA5.md` | Four-paragraph retrospective. Renamed from `RETRO.md` in Week 6 so the new retrospective could use that name; the content is unchanged. |
 | Task 3B | `CLAUDE.md` | The Week 4 file, updated in place. |
 
 `CLAUDE_v1.md`, `DRILL_PROMPTS.md`, `ITERATION_LOG.md` and `JUSTIFICATION.md` are the Week 4 files, unchanged.
+
+| Week 6 deliverable | File | What it holds |
+|---|---|---|
+| Task 1 | `.claude/commands/audit-errors.md`, `scaffold-endpoint.md`, `verify-scope.md` | The three slash commands. `COMMAND_LOG.md` records every real invocation. |
+| Task 2 | `.claude/hooks/guard_writes.py`, `.claude/settings.json` | The PreToolUse guard and its registration. `HOOK_LOG.md` records both bypass vectors, the fix and the retest. |
+| Task 3 | `RETRO.md`, `CLAUDE.md` | The Week 6 retrospective, and the `Hooks` and `Commands` sections of `CLAUDE.md`. |
 
 ## Run it
 
@@ -21,7 +27,7 @@ python -m venv .venv
 .venv/Scripts/python -m pytest -q
 ```
 
-Expected: `170 passed`. Ruff is not in `requirements.txt`; with `ruff==0.16.10` installed, `python -m ruff check .` reports the 5 findings that were already in the Week 4 code. To start the app, run `.venv/Scripts/python app.py`.
+Expected: `182 passed` (the 170 from PA 5 plus 12 for `POST /users`, added in Week 6). Ruff is not in `requirements.txt`; with `ruff==0.16.10` installed, `python -m ruff check .` reports the 5 findings that were already in the Week 4 code. To start the app, run `.venv/Scripts/python app.py`.
 
 ## API
 
@@ -34,6 +40,7 @@ All routes are under `/api`.
 | `GET /tasks/<id>` | Get one task |
 | `PATCH /tasks/<id>` | Update a task's `priority` |
 | `GET /users` | List users |
+| `POST /users` | Create a user from `name` and `email` (Week 6) |
 | `GET /users/<id>` | Get one user |
 | `GET /users/<id>/notifications` | Get the notification preference |
 | `PATCH /users/<id>/notifications` | Set it to `email`, `sms`, `none`, or `null` |
