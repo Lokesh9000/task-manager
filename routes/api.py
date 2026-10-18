@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from services.tasks import get_task, create_task, process_order, update_task_priority, list_tasks, PRIORITY_REASON
-from services.users import get_user, list_users, get_notification_pref, set_notification_pref
+from services.users import get_user, create_user, list_users, get_notification_pref, set_notification_pref
 from utils.errors import AppError, ValidationError
 
 api = Blueprint("api", __name__)
@@ -54,6 +54,16 @@ def get_user_route(user_id):
 @api.route("/users", methods=["GET"])
 def list_users_route():
     return jsonify(list_users())
+
+@api.route("/users", methods=["POST"])
+def create_user_route():
+    data = request.get_json()
+    if not isinstance(data, dict):
+        raise ValidationError("request body", "must be a JSON object")
+    for key in ("name", "email"):
+        if key not in data:
+            raise ValidationError(key, "is required")
+    return jsonify(create_user(data["name"], data["email"])), 201
 
 @api.route("/users/<int:user_id>/notifications", methods=["GET"])
 def get_notification_pref_route(user_id):

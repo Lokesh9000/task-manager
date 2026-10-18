@@ -26,7 +26,18 @@ def _validate_priority(priority: int) -> None:
         raise ValidationError("priority", PRIORITY_REASON)
 
 def process_order(task_id: int) -> dict:
-    task = TASKS[task_id]
+    """Mark a task as done.
+
+    Args:
+        task_id: The unique identifier for the task.
+
+    Returns:
+        The updated task record as a dictionary.
+
+    Raises:
+        NotFoundError: If no task exists with the given ID.
+    """
+    task = get_task(task_id)
     task["done"] = True
     return task
 

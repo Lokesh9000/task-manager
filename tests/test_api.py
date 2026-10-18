@@ -209,6 +209,54 @@ def test_list_users(client):
     assert all("notification_pref" in user for user in body)
     assert USERS == snapshot
 
+def test_create_user(client):
+    snapshot = copy.deepcopy(USERS)
+    response = client.post("/api/users", json={"name": "Carol", "email": "carol@example.com"})
+    assert response.status_code == 201
+    expected = {"id": 3, "name": "Carol", "email": "carol@example.com", "notification_pref": None}
+    assert response.get_json() == expected
+    assert USERS == {**snapshot, 3: expected}
+    assert client.get("/api/users/3").get_json() == expected
+
+@pytest.mark.parametrize(
+    "body, message",
+    [
+        ({"name": "", "email": "carol@example.com"}, "Invalid name: cannot be empty"),
+        ({"name": "   ", "email": "carol@example.com"}, "Invalid name: cannot be empty"),
+        ({"name": "Carol", "email": "carol.example.com"}, "Invalid email: must be a valid email address"),
+        ({"name": "Carol", "email": ""}, "Invalid email: must be a valid email address"),
+    ],
+)
+def test_create_user_invalid(client, body, message):
+    snapshot = copy.deepcopy(USERS)
+    response = client.post("/api/users", json=body)
+    assert response.status_code == 422
+    assert response.get_json() == {"error": message}
+    assert USERS == snapshot
+
+@pytest.mark.parametrize(
+    "body, message",
+    [
+        ({}, "Invalid name: is required"),
+        ({"email": "carol@example.com"}, "Invalid name: is required"),
+        ({"name": "Carol"}, "Invalid email: is required"),
+    ],
+)
+def test_create_user_missing_key(client, body, message):
+    snapshot = copy.deepcopy(USERS)
+    response = client.post("/api/users", json=body)
+    assert response.status_code == 422
+    assert response.get_json() == {"error": message}
+    assert USERS == snapshot
+
+@pytest.mark.parametrize("body", ["[]", '"Carol"', "3", "null"])
+def test_create_user_non_object_body(client, body):
+    snapshot = copy.deepcopy(USERS)
+    response = client.post("/api/users", data=body, content_type="application/json")
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid request body: must be a JSON object"}
+    assert USERS == snapshot
+
 def test_get_user_includes_notification_pref(client):
     response = client.get("/api/users/1")
     assert response.status_code == 200
